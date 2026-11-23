@@ -565,19 +565,16 @@
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      // Antena
       ctx.beginPath();
       ctx.moveTo(8 * s, 3 * s);
       ctx.lineTo(12 * s, 7 * s);
       ctx.lineTo(16 * s, 3 * s);
       ctx.stroke();
 
-      // Tela TV
       ctx.fillStyle = "#131a2a";
       ctx.fillRect(3 * s, 7 * s, 18 * s, 13 * s);
       ctx.strokeRect(3 * s, 7 * s, 18 * s, 13 * s);
 
-      // Play
       ctx.fillStyle = "#38bdf8";
       ctx.beginPath();
       ctx.moveTo(10 * s, 10.5 * s);
@@ -725,7 +722,9 @@
     let activeTab = "ALL";
     let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_favs") || "[]"));
     let statsInterval = null;
-    let fallbackAttempted = false;
+    let fallbackStage = 0;
+    let currentActiveUrl = "";
+    let currentActiveTitle = "";
 
     function setStatus(msg, type = "") {
       statusText.textContent = msg;
@@ -762,41 +761,70 @@
       subSelect.innerHTML = "";
     }
 
-    function playNativeFallback(url, title) {
+    function diagnoseNetworkHint(url) {
+      if (location.protocol === "https:" && /^http:\/\//i.test(url)) {
+        return "Bloqueio Mixed Content: link HTTP dentro de site HTTPS.";
+      }
+      if (/^rtsp:\/\//i.test(url) || /^rtmp:\/\//i.test(url)) {
+        return "Protocolo RTSP/RTMP não roda direto no navegador sem servidor intermediário.";
+      }
+      return "Verifique se o link está ativo, sem bloqueio CORS ou sem proteção DRM.";
+    }
+
+    function playNativeDirect(url, title, useCors = false) {
       destroyHls();
+      video.pause();
+      if (useCors && !url.startsWith("blob:")) {
+        video.crossOrigin = "anonymous";
+      } else {
+        video.removeAttribute("crossOrigin");
+      }
       video.src = url;
+      video.load();
       video.play()
         .then(() => {
-          showOsd(`Reproduzindo: ${title}`);
-          setStatus(`Reproduzindo (modo nativo): ${title}`, "ok");
+          showOsd(`No ar: ${title}`);
+          setStatus(`No ar: ${title}`, "ok");
         })
         .catch(() => {
-          setStatus("Canal offline, bloqueado por CORS/HTTPS ou formato incompatível com o navegador.", "error");
+          if (useCors) {
+            fallbackStage = 2;
+            playNativeDirect(url, title, false);
+          } else {
+            setStatus(`Falha ao abrir "${title}". ${diagnoseNetworkHint(url)}`, "error");
+          }
         });
     }
 
     function playMedia(url, title = "Canal") {
       if (!url) return;
-      fallbackAttempted = false;
+      currentActiveUrl = url;
+      currentActiveTitle = title;
+      fallbackStage = 0;
+
       destroyHls();
       video.pause();
       video.removeAttribute("src");
+      video.removeAttribute("crossOrigin");
       video.load();
 
       showOsd(`Sintonizando: ${title}`);
       setStatus(`Sintonizando ${title}...`);
       persistSession();
 
-      const isDirectVideoFile = /\.(mp4|webm|ogg|mp3|wav)($|\?)/i.test(url);
+      const isDirectFile = /\.(mp4|webm|ogg|mp3|wav|m4v)($|\?)/i.test(url) || url.startsWith("blob:");
 
-      if (!isDirectVideoFile && window.Hls && window.Hls.isSupported()) {
+      if (!isDirectFile && window.Hls && window.Hls.isSupported()) {
         hls = new window.Hls({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 60,
           maxBufferLength: 30,
           fragLoadingMaxRetry: 4,
-          manifestLoadingMaxRetry: 3
+          manifestLoadingMaxRetry: 3,
+          xhrSetup: function (xhr) {
+            xhr.withCredentials = false;
+          }
         });
 
         hls.loadSource(url);
@@ -807,7 +835,7 @@
           showOsd(`No ar: ${title}`);
           setStatus(`No ar: ${title}`, "ok");
           video.play().catch(() => {
-            setStatus("Clique em Play para iniciar o vídeo.");
+            setStatus("Clique em Play para iniciar a reprodução.");
           });
         });
 
@@ -824,20 +852,31 @@
             if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
               setStatus("Ajustando decodificação do sinal...", "error");
               hls.recoverMediaError();
-            } else if (!fallbackAttempted) {
-              fallbackAttempted = true;
-              setStatus("Alternando modo de recepção do canal...");
-              playNativeFallback(url, title);
+            } else if (fallbackStage === 0) {
+              fallbackStage = 1;
+              setStatus("Tentando reprodução direta no player...");
+              playNativeDirect(url, title, false);
             } else {
-              setStatus("Sinal indisponível ou bloqueado pelo servidor (CORS/HTTP).", "error");
+              setStatus(`Canal indisponível ou bloqueado. ${diagnoseNetworkHint(url)}`, "error");
               destroyHls();
             }
           }
         });
       } else {
-        playNativeFallback(url, title);
+        playNativeDirect(url, title, !url.startsWith("blob:"));
       }
     }
+
+    video.addEventListener("error", () => {
+      if (!currentActiveUrl) return;
+      if (fallbackStage === 0) {
+        fallbackStage = 1;
+        playNativeDirect(currentActiveUrl, currentActiveTitle, false);
+      } else if (fallbackStage === 1 && video.hasAttribute("crossOrigin")) {
+        fallbackStage = 2;
+        playNativeDirect(currentActiveUrl, currentActiveTitle, false);
+      }
+    });
 
     function populateQualities(levels) {
       qualitySelect.innerHTML = '<option value="-1">Qualidade: Auto</option>';
@@ -1141,6 +1180,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
     });
 
     btnStop.addEventListener("click", () => {
+      currentActiveUrl = "";
       destroyHls();
       video.pause();
       video.removeAttribute("src");
@@ -1297,7 +1337,6 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       renderChannelList();
     });
 
-    // Exportar lista atual em arquivo .m3u
     btnExportList.addEventListener("click", () => {
       if (!channels.length) {
         setStatus("Não há canais carregados para exportar.", "error");
@@ -1370,7 +1409,6 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       }
     });
 
-    // Restaura sessão anterior ao abrir o PWA
     (function restoreSavedSession() {
       try {
         const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_channels") || "[]");
