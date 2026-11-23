@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0b0f19" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="VLC Web PWA" />
-  <title>VLC Web PWA — Player M3U / HLS / Mídia</title>
+  <meta name="apple-mobile-web-app-title" content="TV Aberta" />
+  <title>TV Aberta — Canais ao Vivo & M3U</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
@@ -16,8 +16,9 @@
       --bg-card: #1b2438;
       --bg-hover: #25314d;
       --border: #2a3756;
-      --accent: #ff7b00;
-      --accent-hover: #e56e00;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --cyan: #38bdf8;
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
       --danger: #ef4444;
@@ -52,16 +53,17 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      font-weight: 700;
-      font-size: 1.05rem;
-      color: var(--accent);
+      font-weight: 800;
+      font-size: 1.08rem;
+      color: var(--cyan);
       margin-right: 6px;
       white-space: nowrap;
+      letter-spacing: 0.2px;
     }
 
-    .cone-icon {
-      width: 22px;
-      height: 22px;
+    .tv-icon {
+      width: 24px;
+      height: 24px;
       display: inline-block;
     }
 
@@ -82,7 +84,7 @@
     }
 
     input[type="text"]:focus, select:focus {
-      border-color: var(--accent);
+      border-color: var(--cyan);
     }
 
     .url-bar input {
@@ -138,7 +140,7 @@
     @media (max-width: 920px) {
       body { height: auto; overflow: auto; }
       .workspace { grid-template-columns: 1fr; }
-      .sidebar { height: 420px; }
+      .sidebar { height: 430px; }
     }
 
     .player-section {
@@ -170,8 +172,8 @@
     .drop-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(255, 123, 0, 0.18);
-      border: 3px dashed var(--accent);
+      background: rgba(37, 99, 235, 0.22);
+      border: 3px dashed var(--cyan);
       display: none;
       align-items: center;
       justify-content: center;
@@ -190,7 +192,7 @@
       position: absolute;
       top: 14px;
       left: 14px;
-      background: rgba(11, 15, 25, 0.82);
+      background: rgba(11, 15, 25, 0.84);
       border: 1px solid var(--border);
       padding: 6px 12px;
       border-radius: 8px;
@@ -207,7 +209,7 @@
       position: absolute;
       top: 14px;
       right: 14px;
-      background: rgba(11, 15, 25, 0.9);
+      background: rgba(11, 15, 25, 0.92);
       border: 1px solid var(--border);
       padding: 10px 12px;
       border-radius: 8px;
@@ -216,12 +218,12 @@
       color: #cbd5e1;
       display: none;
       z-index: 15;
-      min-width: 210px;
+      min-width: 215px;
     }
 
     .stats-panel.visible { display: block; }
 
-    .vlc-controls {
+    .player-controls {
       background: var(--bg-panel);
       border-top: 1px solid var(--border);
       padding: 10px 14px;
@@ -240,14 +242,14 @@
 
     .timeline-row input[type="range"] {
       flex: 1;
-      accent-color: var(--accent);
+      accent-color: var(--cyan);
       cursor: pointer;
     }
 
     .live-pill {
-      background: rgba(239, 68, 68, 0.2);
+      background: rgba(239, 68, 68, 0.22);
       color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.4);
+      border: 1px solid rgba(239, 68, 68, 0.45);
       padding: 2px 8px;
       border-radius: 999px;
       font-size: 0.72rem;
@@ -278,7 +280,7 @@
 
     .volume-box input[type="range"] {
       width: 80px;
-      accent-color: var(--accent);
+      accent-color: var(--cyan);
       cursor: pointer;
     }
 
@@ -363,8 +365,8 @@
     }
 
     .channel-item.active {
-      border-color: var(--accent);
-      background: rgba(255, 123, 0, 0.12);
+      border-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.13);
     }
 
     .ch-logo {
@@ -428,34 +430,34 @@
 
   <header>
     <div class="brand">
-      <svg class="cone-icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L6 18H18L12 2Z" fill="#FF7B00"/>
-        <path d="M8.5 11H15.5L16.6 14H7.4L8.5 11Z" fill="#FFFFFF"/>
-        <rect x="3" y="18" width="18" height="3" rx="1.5" fill="#FF7B00"/>
+      <svg class="tv-icon" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="6" width="20" height="14" rx="3" stroke="#38BDF8" stroke-width="2" fill="#0F172A"/>
+        <path d="M8 2L12 6L16 2" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="10,10 16,13 10,16" fill="#38BDF8"/>
       </svg>
-      VLC Web PWA
+      TV Aberta
     </div>
 
     <form class="url-bar" id="openUrlForm">
       <input
         type="text"
         id="urlInput"
-        placeholder="Cole link de stream (.m3u8, .mp4) ou URL de lista (.m3u)..."
+        placeholder="Cole o link do canal (.m3u8, .mp4) ou lista (.m3u)..."
         required
       />
-      <button type="submit" class="primary">Abrir Mídia</button>
+      <button type="submit" class="primary">Assistir</button>
     </form>
 
-    <label class="btn-file" title="Abrir arquivo .m3u, .m3u8 ou vídeo local">
-      📂 Abrir Arquivo
+    <label class="btn-file" title="Carregar lista .m3u, .m3u8 ou vídeo local">
+      📂 Abrir Lista / Arquivo
       <input type="file" id="fileInput" accept=".m3u,.m3u8,.mp4,.webm,.mkv,.ogg,.mp3,video/*,audio/*" />
     </label>
 
-    <button type="button" id="btnSample" title="Carregar lista pública de exemplo para testar">
-      📺 Lista Exemplo
+    <button type="button" id="btnSample" title="Carregar canais abertos de demonstração">
+      📡 Canais Demo
     </button>
 
-    <button type="button" id="btnInstall" class="install-btn" style="display:none;" title="Instalar como aplicativo PWA">
+    <button type="button" id="btnInstall" class="install-btn" style="display:none;" title="Instalar TV Aberta no dispositivo">
       📲 Instalar App
     </button>
   </header>
@@ -464,12 +466,12 @@
     <section class="player-section">
       <div class="video-wrapper" id="videoWrapper">
         <video id="video" playsinline></video>
-        <div class="osd-badge" id="osdBadge">Pronto — Cole um link ou carregue uma lista M3U</div>
+        <div class="osd-badge" id="osdBadge">TV Aberta — Cole um link ou carregue uma lista de canais</div>
         <div class="stats-panel" id="statsPanel"></div>
-        <div class="drop-overlay">Solte o arquivo .M3U, .M3U8 ou vídeo aqui</div>
+        <div class="drop-overlay">Solte a lista .M3U, .M3U8 ou vídeo aqui</div>
       </div>
 
-      <div class="vlc-controls">
+      <div class="player-controls">
         <div class="timeline-row">
           <span id="currentTime">00:00</span>
           <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1" />
@@ -491,7 +493,7 @@
           </div>
 
           <div class="ctrl-group">
-            <select id="qualitySelect" title="Qualidade / Resolução HLS">
+            <select id="qualitySelect" title="Qualidade / Resolução">
               <option value="-1">Qualidade: Auto</option>
             </select>
 
@@ -508,14 +510,14 @@
             </select>
 
             <button type="button" id="btnSnapshot" title="Capturar Foto da Tela">📸</button>
-            <button type="button" id="btnStats" title="Informações de Codec e Stream">ℹ️</button>
-            <button type="button" id="btnPip" title="Picture-in-Picture">🗗</button>
+            <button type="button" id="btnStats" title="Informações Técnicas do Sinal">ℹ️</button>
+            <button type="button" id="btnPip" title="Janela Flutuante (PiP)">🗗</button>
             <button type="button" id="btnFullscreen" title="Tela Cheia (F)">⛶</button>
           </div>
         </div>
 
         <div class="status-bar">
-          <span id="statusText">PWA pronto. Atalhos: Espaço (Play), F (Tela cheia), M (Mudo), Setas (Navegar/Volume).</span>
+          <span id="statusText">Pronto. Atalhos: Espaço (Play), F (Tela cheia), M (Mudo), N/P (Trocar canal).</span>
           <span id="channelCounter">0 canais</span>
         </div>
       </div>
@@ -523,11 +525,12 @@
 
     <aside class="sidebar">
       <div class="sidebar-header">
-        <input type="text" id="searchInput" placeholder="Buscar canal por nome..." />
+        <input type="text" id="searchInput" placeholder="Buscar canal..." />
         <div class="filter-row">
           <select id="categorySelect">
             <option value="ALL">Todas as categorias</option>
           </select>
+          <button type="button" id="btnExportList" title="Salvar/Exportar lista atual (.m3u)">💾</button>
           <button type="button" id="btnClearList" title="Limpar lista atual">🗑️</button>
         </div>
         <div class="tab-btns">
@@ -538,16 +541,16 @@
 
       <div class="channel-list" id="channelList">
         <div class="empty-list">
-          Nenhum canal carregado ainda.<br /><br />
-          Cole um link <strong>.m3u8</strong> ou <strong>.m3u</strong> acima, clique em <strong>Abrir Arquivo</strong> ou teste com <strong>Lista Exemplo</strong>.
+          Nenhum canal carregado.<br /><br />
+          Cole um link <strong>.m3u8</strong> ou <strong>.m3u</strong> acima, clique em <strong>Abrir Lista / Arquivo</strong> ou teste com <strong>Canais Demo</strong>.
         </div>
       </div>
     </aside>
   </div>
 
   <script>
-    // --- CONFIGURAÇÃO PWA (Manifesto + Service Worker em arquivo único) ---
-    function generateIconDataUrl(size) {
+    // --- CONFIGURAÇÃO PWA (Manifesto + Service Worker) ---
+    function generateTvIconDataUrl(size) {
       const c = document.createElement("canvas");
       c.width = size;
       c.height = size;
@@ -557,32 +560,38 @@
       ctx.fillRect(0, 0, size, size);
 
       const s = size / 24;
-      ctx.fillStyle = "#ff7b00";
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2 * s;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Antena
       ctx.beginPath();
-      ctx.moveTo(12 * s, 2 * s);
-      ctx.lineTo(6 * s, 18 * s);
-      ctx.lineTo(18 * s, 18 * s);
+      ctx.moveTo(8 * s, 3 * s);
+      ctx.lineTo(12 * s, 7 * s);
+      ctx.lineTo(16 * s, 3 * s);
+      ctx.stroke();
+
+      // Tela TV
+      ctx.fillStyle = "#131a2a";
+      ctx.fillRect(3 * s, 7 * s, 18 * s, 13 * s);
+      ctx.strokeRect(3 * s, 7 * s, 18 * s, 13 * s);
+
+      // Play
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.moveTo(10 * s, 10.5 * s);
+      ctx.lineTo(16 * s, 13.5 * s);
+      ctx.lineTo(10 * s, 16.5 * s);
       ctx.closePath();
       ctx.fill();
-
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.moveTo(8.5 * s, 11 * s);
-      ctx.lineTo(15.5 * s, 11 * s);
-      ctx.lineTo(16.6 * s, 14 * s);
-      ctx.lineTo(7.4 * s, 14 * s);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = "#ff7b00";
-      ctx.fillRect(3 * s, 18 * s, 18 * s, 3 * s);
 
       return c.toDataURL("image/png");
     }
 
-    function setupPwaManifestAndSw() {
-      const icon192 = generateIconDataUrl(192);
-      const icon512 = generateIconDataUrl(512);
+    function setupPwa() {
+      const icon192 = generateTvIconDataUrl(192);
+      const icon512 = generateTvIconDataUrl(512);
 
       const appleLink = document.createElement("link");
       appleLink.rel = "apple-touch-icon";
@@ -590,8 +599,8 @@
       document.head.appendChild(appleLink);
 
       const manifestObj = {
-        name: "VLC Web PWA — Player M3U & HLS",
-        short_name: "VLC PWA",
+        name: "TV Aberta — Canais ao Vivo",
+        short_name: "TV Aberta",
         start_url: "./",
         display: "standalone",
         orientation: "any",
@@ -604,15 +613,14 @@
       };
 
       const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: "application/manifest+json" });
-      const manifestUrl = URL.createObjectURL(manifestBlob);
       const manifestLink = document.createElement("link");
       manifestLink.rel = "manifest";
-      manifestLink.href = manifestUrl;
+      manifestLink.href = URL.createObjectURL(manifestBlob);
       document.head.appendChild(manifestLink);
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "vlc-web-pwa-v1";
+          const CACHE_NAME = "tv-aberta-pwa-v1";
           self.addEventListener("install", (event) => {
             event.waitUntil(
               caches.open(CACHE_NAME).then((cache) => cache.addAll(["./"]).catch(() => {}))
@@ -630,16 +638,14 @@
           self.addEventListener("fetch", (event) => {
             if (event.request.method !== "GET") return;
             const url = event.request.url;
-            // Não intercepta streams de vídeo/segmentos TS/M3U8 para manter reprodução ao vivo fluida
-            if (/\\.(m3u8|ts|m4s|mp4|webm)($|\\?)/i.test(url)) return;
+            if (/\\.(m3u8|ts|m4s|mp4|webm|aac|mp3)($|\\?)/i.test(url)) return;
             event.respondWith(
               fetch(event.request).catch(() => caches.match(event.request))
             );
           });
         `;
         const swBlob = new Blob([swCode], { type: "application/javascript" });
-        const swUrl = URL.createObjectURL(swBlob);
-        navigator.serviceWorker.register(swUrl).catch(() => {});
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
       }
     }
 
@@ -657,7 +663,7 @@
       deferredInstallPrompt.prompt();
       const { outcome } = await deferredInstallPrompt.userChoice;
       if (outcome === "accepted") {
-        setStatus("Aplicativo instalado na tela inicial!", "ok");
+        setStatus("App TV Aberta instalado na tela inicial!", "ok");
       }
       deferredInstallPrompt = null;
       btnInstall.style.display = "none";
@@ -665,12 +671,12 @@
 
     window.addEventListener("appinstalled", () => {
       btnInstall.style.display = "none";
-      setStatus("VLC Web PWA instalado com sucesso.", "ok");
+      setStatus("TV Aberta instalado com sucesso.", "ok");
     });
 
-    setupPwaManifestAndSw();
+    setupPwa();
 
-    // --- PLAYER E LISTA DE CANAIS ---
+    // --- MOTOR DE REPRODUÇÃO & CANAIS ---
     const video = document.getElementById("video");
     const videoWrapper = document.getElementById("videoWrapper");
     const osdBadge = document.getElementById("osdBadge");
@@ -706,6 +712,7 @@
 
     const searchInput = document.getElementById("searchInput");
     const categorySelect = document.getElementById("categorySelect");
+    const btnExportList = document.getElementById("btnExportList");
     const btnClearList = document.getElementById("btnClearList");
     const tabAll = document.getElementById("tabAll");
     const tabFav = document.getElementById("tabFav");
@@ -716,8 +723,9 @@
     let channels = [];
     let currentChannelIndex = -1;
     let activeTab = "ALL";
-    let favorites = new Set(JSON.parse(localStorage.getItem("vlc_pwa_favs") || "[]"));
+    let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_favs") || "[]"));
     let statsInterval = null;
+    let fallbackAttempted = false;
 
     function setStatus(msg, type = "") {
       statusText.textContent = msg;
@@ -729,14 +737,14 @@
     }
 
     function saveFavorites() {
-      localStorage.setItem("vlc_pwa_favs", JSON.stringify([...favorites]));
+      localStorage.setItem("tv_aberta_favs", JSON.stringify([...favorites]));
       favCountEl.textContent = favorites.size;
     }
 
     function persistSession() {
       try {
-        localStorage.setItem("vlc_pwa_channels", JSON.stringify(channels.slice(0, 500)));
-        localStorage.setItem("vlc_pwa_last_url", urlInput.value.trim());
+        localStorage.setItem("tv_aberta_channels", JSON.stringify(channels.slice(0, 1000)));
+        localStorage.setItem("tv_aberta_last_url", urlInput.value.trim());
       } catch {}
     }
 
@@ -754,24 +762,41 @@
       subSelect.innerHTML = "";
     }
 
-    function playMedia(url, title = "Stream") {
+    function playNativeFallback(url, title) {
+      destroyHls();
+      video.src = url;
+      video.play()
+        .then(() => {
+          showOsd(`Reproduzindo: ${title}`);
+          setStatus(`Reproduzindo (modo nativo): ${title}`, "ok");
+        })
+        .catch(() => {
+          setStatus("Canal offline, bloqueado por CORS/HTTPS ou formato incompatível com o navegador.", "error");
+        });
+    }
+
+    function playMedia(url, title = "Canal") {
       if (!url) return;
+      fallbackAttempted = false;
       destroyHls();
       video.pause();
       video.removeAttribute("src");
       video.load();
 
-      showOsd(`Carregando: ${title}`);
-      setStatus(`Conectando em ${title}...`);
+      showOsd(`Sintonizando: ${title}`);
+      setStatus(`Sintonizando ${title}...`);
       persistSession();
 
-      const isHls = /\.m3u8($|\?)/i.test(url) || url.includes("m3u8");
+      const isDirectVideoFile = /\.(mp4|webm|ogg|mp3|wav)($|\?)/i.test(url);
 
-      if (isHls && window.Hls && window.Hls.isSupported()) {
+      if (!isDirectVideoFile && window.Hls && window.Hls.isSupported()) {
         hls = new window.Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          backBufferLength: 60
+          backBufferLength: 60,
+          maxBufferLength: 30,
+          fragLoadingMaxRetry: 4,
+          manifestLoadingMaxRetry: 3
         });
 
         hls.loadSource(url);
@@ -779,10 +804,10 @@
 
         hls.on(window.Hls.Events.MANIFEST_PARSED, (_e, data) => {
           populateQualities(data.levels || []);
-          showOsd(`Reproduzindo: ${title}`);
-          setStatus(`Reproduzindo: ${title}`, "ok");
+          showOsd(`No ar: ${title}`);
+          setStatus(`No ar: ${title}`, "ok");
           video.play().catch(() => {
-            setStatus("Clique em Play para iniciar a reprodução.");
+            setStatus("Clique em Play para iniciar o vídeo.");
           });
         });
 
@@ -796,28 +821,21 @@
 
         hls.on(window.Hls.Events.ERROR, (_e, data) => {
           if (data.fatal) {
-            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-              setStatus("Erro de rede ou bloqueio CORS/HTTPS no servidor do stream. Tentando reconectar...", "error");
-              hls.startLoad();
-            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              setStatus("Erro de decodificação de mídia. Recuperando...", "error");
+            if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              setStatus("Ajustando decodificação do sinal...", "error");
               hls.recoverMediaError();
+            } else if (!fallbackAttempted) {
+              fallbackAttempted = true;
+              setStatus("Alternando modo de recepção do canal...");
+              playNativeFallback(url, title);
             } else {
-              setStatus(`Falha ao abrir stream (${data.details}).`, "error");
+              setStatus("Sinal indisponível ou bloqueado pelo servidor (CORS/HTTP).", "error");
               destroyHls();
             }
           }
         });
       } else {
-        video.src = url;
-        video.play()
-          .then(() => {
-            showOsd(`Reproduzindo: ${title}`);
-            setStatus(`Reproduzindo: ${title}`, "ok");
-          })
-          .catch(() => {
-            setStatus("Não foi possível reproduzir diretamente (verifique formato ou CORS).", "error");
-          });
+        playNativeFallback(url, title);
       }
     }
 
@@ -880,13 +898,13 @@
           meta = {
             name: name || "Canal sem nome",
             logo: logoMatch ? logoMatch[1] : "",
-            group: groupMatch && groupMatch[1] ? groupMatch[1] : "Geral"
+            group: groupMatch && groupMatch[1] ? groupMatch[1] : "TV Aberta"
           };
         } else if (!line.startsWith("#")) {
           parsed.push({
             name: meta?.name || `Canal ${parsed.length + 1}`,
             logo: meta?.logo || "",
-            group: meta?.group || "Geral",
+            group: meta?.group || "TV Aberta",
             url: line
           });
           meta = null;
@@ -1009,7 +1027,7 @@
       if (!url) return;
 
       if (/\.m3u($|\?)/i.test(url)) {
-        setStatus("Baixando lista M3U remota...");
+        setStatus("Carregando lista de canais...");
         try {
           const resp = await fetch(url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1021,7 +1039,7 @@
             return;
           }
         } catch {
-          setStatus("Não foi possível baixar a lista M3U (bloqueio CORS). Tentando abrir como stream...", "error");
+          setStatus("Abrindo link diretamente no reprodutor...");
         }
       }
 
@@ -1039,7 +1057,7 @@
           const list = parseM3UContent(text);
           if (list.length > 0) {
             loadChannels(list, true);
-            setStatus(`Arquivo "${file.name}" carregado (${list.length} canais).`, "ok");
+            setStatus(`Lista "${file.name}" carregada (${list.length} canais).`, "ok");
           } else {
             const firstUrl = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
             if (firstUrl) {
@@ -1084,19 +1102,19 @@
     btnSample.addEventListener("click", () => {
       const sampleM3U = `
 #EXTM3U
-#EXTINF:-1 group-title="Testes HLS" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/220px-Big_buck_bunny_poster_big.jpg",Big Buck Bunny (HLS 1080p)
+#EXTINF:-1 group-title="Canais Demo HD",Canal Demo 1 (Full HD HLS)
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
-#EXTINF:-1 group-title="Testes HLS",Tears of Steel (HLS Multi-Áudio)
+#EXTINF:-1 group-title="Canais Demo HD",Canal Demo 2 (Multi-Áudio)
 https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
-#EXTINF:-1 group-title="Testes HLS",Sintel (HLS)
+#EXTINF:-1 group-title="Canais Demo HD",Canal Demo 3 (Cinema)
 https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8
-#EXTINF:-1 group-title="Vídeos Diretos",For Bigger Blazes (MP4)
+#EXTINF:-1 group-title="Variedades",Canal Demo 4 (MP4 Direto)
 https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4
       `.trim();
 
       const list = parseM3UContent(sampleM3U);
       loadChannels(list, true);
-      setStatus("Lista de exemplo carregada para testes.", "ok");
+      setStatus("Canais de demonstração carregados.", "ok");
     });
 
     function formatTime(sec) {
@@ -1132,7 +1150,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       currentTimeEl.textContent = "00:00";
       durationTimeEl.textContent = "00:00";
       liveBadge.style.display = "none";
-      showOsd("Parado");
+      showOsd("TV Aberta — Parado");
       setStatus("Reprodução interrompida.");
     });
 
@@ -1164,7 +1182,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
     video.addEventListener("timeupdate", () => {
       if (!isFinite(video.duration) || video.duration === 0) {
         liveBadge.style.display = "inline-block";
-        durationTimeEl.textContent = "LIVE";
+        durationTimeEl.textContent = "AO VIVO";
         currentTimeEl.textContent = formatTime(video.currentTime);
         seekBar.value = 100;
       } else {
@@ -1199,7 +1217,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
 
     btnSnapshot.addEventListener("click", () => {
       if (!video.videoWidth) {
-        setStatus("Nenhum vídeo ativo para capturar imagem.", "error");
+        setStatus("Nenhum vídeo ativo para capturar tela.", "error");
         return;
       }
       try {
@@ -1208,12 +1226,12 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
         const link = document.createElement("a");
-        link.download = `snapshot-${Date.now()}.png`;
+        link.download = `tv-aberta-${Date.now()}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
-        setStatus("Snapshot salvo!", "ok");
+        setStatus("Captura de tela salva!", "ok");
       } catch {
-        setStatus("Não foi possível capturar screenshot (stream protegido por CORS).", "error");
+        setStatus("Não foi possível capturar imagem (proteção CORS do servidor).", "error");
       }
     });
 
@@ -1232,17 +1250,17 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       const buffered = video.buffered.length
         ? `${(video.buffered.end(video.buffered.length - 1) - video.currentTime).toFixed(1)}s`
         : "0s";
-      let hlsInfo = "Nativo / Direto";
+      let streamInfo = "Direto / Nativo";
       if (hls && hls.levels && hls.currentLevel >= 0 && hls.levels[hls.currentLevel]) {
         const lvl = hls.levels[hls.currentLevel];
-        hlsInfo = `HLS • ${Math.round((lvl.bitrate || 0) / 1000)} kbps • ${lvl.videoCodec || ""}`;
+        streamInfo = `HLS • ${Math.round((lvl.bitrate || 0) / 1000)} kbps • ${lvl.videoCodec || ""}`;
       }
       statsPanel.innerHTML = `
-        <strong>Informações de Mídia</strong><br>
+        <strong>Detalhes do Sinal</strong><br>
         Resolução: ${res}<br>
         Buffer: ${buffered}<br>
         Velocidade: ${video.playbackRate}x<br>
-        Motor: ${hlsInfo}
+        Transmissão: ${streamInfo}
       `;
     }
 
@@ -1251,7 +1269,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
         if (document.pictureInPictureElement) await document.exitPictureInPicture();
         else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
       } catch {
-        setStatus("Picture-in-Picture não disponível para este vídeo.", "error");
+        setStatus("Janela flutuante (PiP) indisponível neste canal.", "error");
       }
     });
 
@@ -1279,10 +1297,31 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       renderChannelList();
     });
 
+    // Exportar lista atual em arquivo .m3u
+    btnExportList.addEventListener("click", () => {
+      if (!channels.length) {
+        setStatus("Não há canais carregados para exportar.", "error");
+        return;
+      }
+      const lines = ["#EXTM3U"];
+      channels.forEach((ch) => {
+        const logoAttr = ch.logo ? ` tvg-logo="${ch.logo}"` : "";
+        const groupAttr = ch.group ? ` group-title="${ch.group}"` : "";
+        lines.push(`#EXTINF:-1${groupAttr}${logoAttr},${ch.name}`);
+        lines.push(ch.url);
+      });
+      const blob = new Blob([lines.join("\n")], { type: "audio/x-mpegurl" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "lista-tv-aberta.m3u";
+      a.click();
+      setStatus("Lista exportada como lista-tv-aberta.m3u!", "ok");
+    });
+
     btnClearList.addEventListener("click", () => {
       channels = [];
       currentChannelIndex = -1;
-      localStorage.removeItem("vlc_pwa_channels");
+      localStorage.removeItem("tv_aberta_channels");
       updateCategories();
       renderChannelList();
       channelCounter.textContent = "0 canais";
@@ -1331,11 +1370,11 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       }
     });
 
-    // Restaura última lista salva ao abrir o PWA
+    // Restaura sessão anterior ao abrir o PWA
     (function restoreSavedSession() {
       try {
-        const savedChannels = JSON.parse(localStorage.getItem("vlc_pwa_channels") || "[]");
-        const lastUrl = localStorage.getItem("vlc_pwa_last_url") || "";
+        const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_channels") || "[]");
+        const lastUrl = localStorage.getItem("tv_aberta_last_url") || "";
         if (lastUrl) urlInput.value = lastUrl;
         if (Array.isArray(savedChannels) && savedChannels.length > 0) {
           channels = savedChannels;
@@ -1347,10 +1386,11 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
             currentChannelIndex = idx;
             renderChannelList();
           }
-          setStatus(`Sessão restaurada (${channels.length} canais salvos). Clique em um canal para tocar.`, "ok");
+          setStatus(`Sessão restaurada (${channels.length} canais salvos). Clique em um canal para assistir.`, "ok");
         }
       } catch {}
     })();
   </script>
 </body>
 </html>
+
