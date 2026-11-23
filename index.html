@@ -456,7 +456,7 @@
     <section class="player-section">
       <div class="video-wrapper" id="videoWrapper">
         <video id="video" playsinline></video>
-        <div class="osd-badge" id="osdBadge">TV Aberta Brasil — Clique em Carregar / Assistir</div>
+        <div class="osd-badge" id="osdBadge">Carregando lista do Brasil...</div>
         <div class="stats-panel" id="statsPanel"></div>
         <div class="drop-overlay">Solte a lista .M3U, .M3U8 ou vídeo aqui</div>
       </div>
@@ -507,7 +507,7 @@
         </div>
 
         <div class="status-bar">
-          <span id="statusText">Pronto. Clique em Carregar / Assistir para puxar os canais do Brasil.</span>
+          <span id="statusText">Iniciando carregamento automático...</span>
           <span id="channelCounter">0 canais</span>
         </div>
       </div>
@@ -531,7 +531,7 @@
 
       <div class="channel-list" id="channelList">
         <div class="empty-list">
-          Clique em <strong>Carregar / Assistir</strong> para carregar a grade de canais abertos do Brasil.
+          Baixando lista de canais...
         </div>
       </div>
     </aside>
@@ -599,7 +599,7 @@
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "tv-aberta-br-v1";
+          const CACHE_NAME = "tv-aberta-br-v2";
           self.addEventListener("install", (e) => {
             e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(["./"]).catch(() => {})));
             self.skipWaiting();
@@ -1041,7 +1041,7 @@
           const list = parseM3UContent(text);
           if (list.length > 0) {
             loadChannels(list, false);
-            setStatus(`Lista do Brasil carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
+            setStatus(`Lista carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
             showOsd(`Lista com ${list.length} canais — Selecione um canal`);
             return;
           }
@@ -1281,7 +1281,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       }
     });
 
-    (function restoreSavedSession() {
+    (function initPlayer() {
       try {
         const lastUrl = localStorage.getItem("tv_aberta_br_last_url");
         if (lastUrl) urlInput.value = lastUrl;
@@ -1291,9 +1291,14 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
           updateCategories();
           renderChannelList();
           channelCounter.textContent = `${channels.length} canal(is)`;
-          setStatus(`Sessão restaurada (${channels.length} canais do Brasil).`, "ok");
+          setStatus(`Sessão restaurada (${channels.length} canais do Brasil). Clique em um canal para assistir.`, "ok");
+          showOsd(`Lista com ${channels.length} canais — Selecione um canal`);
+          return;
         }
       } catch {}
+
+      // Carrega automaticamente a URL definida no campo ao abrir a página
+      handleOpenUrl(urlInput.value);
     })();
   </script>
 </body>
