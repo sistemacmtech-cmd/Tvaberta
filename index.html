@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0b0f19" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="TV Aberta" />
-  <title>TV Aberta</title>
+  <meta name="apple-mobile-web-app-title" content="TV Aberta Brasil" />
+  <title>TV Aberta Brasil</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
@@ -424,14 +424,14 @@
         <path d="M8 2L12 6L16 2" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <polygon points="10,10 16,13 10,16" fill="#38BDF8"/>
       </svg>
-      TV Aberta
+      TV Aberta Brasil
     </div>
 
     <form class="url-bar" id="openUrlForm">
       <input
         type="text"
         id="urlInput"
-        value="https://iptv-org.github.io/iptv/index.m3u"
+        value="https://iptv-org.github.io/iptv/countries/br.m3u"
         placeholder="Cole o link do canal (.m3u8, .mp4) ou lista (.m3u)..."
         required
       />
@@ -456,7 +456,7 @@
     <section class="player-section">
       <div class="video-wrapper" id="videoWrapper">
         <video id="video" playsinline></video>
-        <div class="osd-badge" id="osdBadge">TV Aberta — Clique em Carregar / Assistir ou escolha um canal</div>
+        <div class="osd-badge" id="osdBadge">TV Aberta Brasil — Clique em Carregar / Assistir</div>
         <div class="stats-panel" id="statsPanel"></div>
         <div class="drop-overlay">Solte a lista .M3U, .M3U8 ou vídeo aqui</div>
       </div>
@@ -507,7 +507,7 @@
         </div>
 
         <div class="status-bar">
-          <span id="statusText">Pronto. Clique em Carregar / Assistir para abrir a lista ou sintonize um canal.</span>
+          <span id="statusText">Pronto. Clique em Carregar / Assistir para puxar os canais do Brasil.</span>
           <span id="channelCounter">0 canais</span>
         </div>
       </div>
@@ -515,7 +515,7 @@
 
     <aside class="sidebar">
       <div class="sidebar-header">
-        <input type="text" id="searchInput" placeholder="Buscar canal na lista..." />
+        <input type="text" id="searchInput" placeholder="Buscar canal do Brasil..." />
         <div class="filter-row">
           <select id="categorySelect">
             <option value="ALL">Todas as categorias</option>
@@ -531,7 +531,7 @@
 
       <div class="channel-list" id="channelList">
         <div class="empty-list">
-          Clique em <strong>Carregar / Assistir</strong> no topo para baixar a lista de canais, ou use <strong>Abrir Lista / Arquivo</strong>.
+          Clique em <strong>Carregar / Assistir</strong> para carregar a grade de canais abertos do Brasil.
         </div>
       </div>
     </aside>
@@ -579,8 +579,8 @@
       document.head.appendChild(appleLink);
 
       const manifestObj = {
-        name: "TV Aberta",
-        short_name: "TV Aberta",
+        name: "TV Aberta Brasil",
+        short_name: "TV Brasil",
         start_url: "./",
         display: "standalone",
         orientation: "any",
@@ -599,7 +599,7 @@
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "tv-aberta-v2";
+          const CACHE_NAME = "tv-aberta-br-v1";
           self.addEventListener("install", (e) => {
             e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(["./"]).catch(() => {})));
             self.skipWaiting();
@@ -629,13 +629,13 @@
       if (!deferredInstallPrompt) return;
       deferredInstallPrompt.prompt();
       const { outcome } = await deferredInstallPrompt.userChoice;
-      if (outcome === "accepted") setStatus("TV Aberta instalado!", "ok");
+      if (outcome === "accepted") setStatus("App instalado!", "ok");
       deferredInstallPrompt = null;
       btnInstall.style.display = "none";
     });
     window.addEventListener("appinstalled", () => {
       btnInstall.style.display = "none";
-      setStatus("TV Aberta instalado com sucesso.", "ok");
+      setStatus("App instalado com sucesso.", "ok");
     });
 
     setupPwa();
@@ -682,7 +682,7 @@
     let visibleLimit = PAGE_SIZE;
     let currentChannelIndex = -1;
     let activeTab = "ALL";
-    let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_favs") || "[]"));
+    let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_br_favs") || "[]"));
     let statsInterval = null;
     let fallbackStage = 0;
     let currentActiveUrl = "";
@@ -698,17 +698,17 @@
     }
 
     function saveFavorites() {
-      localStorage.setItem("tv_aberta_favs", JSON.stringify([...favorites]));
+      localStorage.setItem("tv_aberta_br_favs", JSON.stringify([...favorites]));
       favCountEl.textContent = favorites.size;
     }
 
     function persistSession() {
       try {
-        localStorage.setItem("tv_aberta_last_url", urlInput.value.trim());
+        localStorage.setItem("tv_aberta_br_last_url", urlInput.value.trim());
         if (channels.length <= 2000) {
-          localStorage.setItem("tv_aberta_channels", JSON.stringify(channels));
+          localStorage.setItem("tv_aberta_br_channels", JSON.stringify(channels));
         } else {
-          localStorage.removeItem("tv_aberta_channels");
+          localStorage.removeItem("tv_aberta_br_channels");
         }
       } catch {}
     }
@@ -898,13 +898,13 @@
           meta = {
             name: name || "Canal sem nome",
             logo: logoMatch ? logoMatch[1] : "",
-            group: groupMatch && groupMatch[1] ? groupMatch[1] : "TV Aberta"
+            group: groupMatch && groupMatch[1] ? groupMatch[1] : "Geral"
           };
         } else if (!line.startsWith("#")) {
           parsed.push({
             name: meta?.name || `Canal ${parsed.length + 1}`,
             logo: meta?.logo || "",
-            group: meta?.group || "TV Aberta",
+            group: meta?.group || "Geral",
             url: line
           });
           meta = null;
@@ -1032,8 +1032,8 @@
       if (!url) return;
 
       if (/\.m3u($|\?)/i.test(url)) {
-        setStatus("Baixando e lendo lista de canais...");
-        showOsd("Carregando lista de canais...");
+        setStatus("Baixando e lendo lista de canais do Brasil...");
+        showOsd("Carregando canais do Brasil...");
         try {
           const resp = await fetch(url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1041,12 +1041,12 @@
           const list = parseM3UContent(text);
           if (list.length > 0) {
             loadChannels(list, false);
-            setStatus(`Lista carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
+            setStatus(`Lista do Brasil carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
             showOsd(`Lista com ${list.length} canais — Selecione um canal`);
             return;
           }
         } catch {
-          setStatus("Não foi possível baixar a lista automaticamente. Tente baixar o .m3u e abrir por Arquivo.", "err");
+          setStatus("Erro ao baixar a lista. Verifique sua conexão ou tente usar o arquivo .m3u local.", "err");
           return;
         }
       }
@@ -1063,7 +1063,7 @@
           const list = parseM3UContent(text);
           if (list.length > 0) {
             loadChannels(list, false);
-            setStatus(`Lista "${file.name}" carregada (${list.length} canais). Clique em um canal.`, "ok");
+            setStatus(`Lista "${file.name}" carregada (${list.length} canais).`, "ok");
           } else {
             const firstUrl = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
             firstUrl ? playMedia(firstUrl, file.name) : setStatus("Nenhum link válido no arquivo.", "err");
@@ -1128,7 +1128,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       currentTimeEl.textContent = "00:00";
       durationTimeEl.textContent = "00:00";
       liveBadge.style.display = "none";
-      showOsd("TV Aberta — Parado");
+      showOsd("TV Aberta Brasil — Parado");
       setStatus("Reprodução interrompida.");
     };
 
@@ -1179,7 +1179,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
         c.height = video.videoHeight;
         c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
         const a = document.createElement("a");
-        a.download = `tv-aberta-${Date.now()}.png`;
+        a.download = `tv-aberta-br-${Date.now()}.png`;
         a.href = c.toDataURL("image/png");
         a.click();
         setStatus("Captura salva!", "ok");
@@ -1250,7 +1250,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "audio/x-mpegurl" }));
-      a.download = "lista-tv-aberta.m3u";
+      a.download = "lista-tv-aberta-brasil.m3u";
       a.click();
       setStatus("Lista exportada!", "ok");
     };
@@ -1258,7 +1258,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
     btnClearList.onclick = () => {
       channels = [];
       currentChannelIndex = -1;
-      localStorage.removeItem("tv_aberta_channels");
+      localStorage.removeItem("tv_aberta_br_channels");
       updateCategories();
       renderChannelList();
       channelCounter.textContent = "0 canais";
@@ -1283,15 +1283,15 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
 
     (function restoreSavedSession() {
       try {
-        const lastUrl = localStorage.getItem("tv_aberta_last_url");
+        const lastUrl = localStorage.getItem("tv_aberta_br_last_url");
         if (lastUrl) urlInput.value = lastUrl;
-        const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_channels") || "[]");
+        const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_br_channels") || "[]");
         if (Array.isArray(savedChannels) && savedChannels.length > 0) {
           channels = savedChannels;
           updateCategories();
           renderChannelList();
           channelCounter.textContent = `${channels.length} canal(is)`;
-          setStatus(`Sessão restaurada (${channels.length} canais). Clique em um canal para assistir.`, "ok");
+          setStatus(`Sessão restaurada (${channels.length} canais do Brasil).`, "ok");
         }
       } catch {}
     })();
