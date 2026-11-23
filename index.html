@@ -124,14 +124,14 @@
     .workspace {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 340px;
+      grid-template-columns: 1fr 350px;
       min-height: 0;
     }
 
     @media (max-width: 920px) {
       body { height: auto; overflow: auto; }
       .workspace { grid-template-columns: 1fr; }
-      .sidebar { height: 420px; }
+      .sidebar { height: 440px; }
     }
 
     .player-section {
@@ -408,6 +408,12 @@
       padding: 24px 12px;
       line-height: 1.5;
     }
+
+    .load-more-btn {
+      width: 100%;
+      justify-content: center;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -425,10 +431,11 @@
       <input
         type="text"
         id="urlInput"
+        value="https://iptv-org.github.io/iptv/index.m3u"
         placeholder="Cole o link do canal (.m3u8, .mp4) ou lista (.m3u)..."
         required
       />
-      <button type="submit" class="primary">Assistir</button>
+      <button type="submit" class="primary">Carregar / Assistir</button>
     </form>
 
     <label class="btn-file" title="Carregar lista .m3u, .m3u8 ou vídeo local">
@@ -449,7 +456,7 @@
     <section class="player-section">
       <div class="video-wrapper" id="videoWrapper">
         <video id="video" playsinline></video>
-        <div class="osd-badge" id="osdBadge">TV Aberta — Cole um link ou carregue uma lista</div>
+        <div class="osd-badge" id="osdBadge">TV Aberta — Clique em Carregar / Assistir ou escolha um canal</div>
         <div class="stats-panel" id="statsPanel"></div>
         <div class="drop-overlay">Solte a lista .M3U, .M3U8 ou vídeo aqui</div>
       </div>
@@ -500,7 +507,7 @@
         </div>
 
         <div class="status-bar">
-          <span id="statusText">Pronto. Atalhos: Espaço (Play), F (Tela cheia), M (Mudo), N/P (Trocar canal).</span>
+          <span id="statusText">Pronto. Clique em Carregar / Assistir para abrir a lista ou sintonize um canal.</span>
           <span id="channelCounter">0 canais</span>
         </div>
       </div>
@@ -508,7 +515,7 @@
 
     <aside class="sidebar">
       <div class="sidebar-header">
-        <input type="text" id="searchInput" placeholder="Buscar canal..." />
+        <input type="text" id="searchInput" placeholder="Buscar canal na lista..." />
         <div class="filter-row">
           <select id="categorySelect">
             <option value="ALL">Todas as categorias</option>
@@ -524,14 +531,15 @@
 
       <div class="channel-list" id="channelList">
         <div class="empty-list">
-          Nenhum canal carregado.<br /><br />
-          Cole um link <strong>.m3u8</strong> ou <strong>.m3u</strong> acima, clique em <strong>Abrir Lista / Arquivo</strong> ou teste com <strong>Canais Demo</strong>.
+          Clique em <strong>Carregar / Assistir</strong> no topo para baixar a lista de canais, ou use <strong>Abrir Lista / Arquivo</strong>.
         </div>
       </div>
     </aside>
   </div>
 
   <script>
+    const PAGE_SIZE = 120;
+
     function generateTvIconDataUrl(size) {
       const c = document.createElement("canvas");
       c.width = size;
@@ -591,7 +599,7 @@
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "tv-aberta-v1";
+          const CACHE_NAME = "tv-aberta-v2";
           self.addEventListener("install", (e) => {
             e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(["./"]).catch(() => {})));
             self.skipWaiting();
@@ -602,7 +610,7 @@
           });
           self.addEventListener("fetch", (e) => {
             if (e.request.method !== "GET") return;
-            if (/\\.(m3u8|ts|m4s|mp4|webm|aac|mp3)($|\\?)/i.test(e.request.url)) return;
+            if (/\\.(m3u8|ts|m4s|mp4|webm|aac|mp3|m3u)($|\\?)/i.test(e.request.url)) return;
             e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
           });
         `;
@@ -671,6 +679,7 @@
 
     let hls = null;
     let channels = [];
+    let visibleLimit = PAGE_SIZE;
     let currentChannelIndex = -1;
     let activeTab = "ALL";
     let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_favs") || "[]"));
@@ -695,8 +704,12 @@
 
     function persistSession() {
       try {
-        localStorage.setItem("tv_aberta_channels", JSON.stringify(channels.slice(0, 1000)));
         localStorage.setItem("tv_aberta_last_url", urlInput.value.trim());
+        if (channels.length <= 2000) {
+          localStorage.setItem("tv_aberta_channels", JSON.stringify(channels));
+        } else {
+          localStorage.removeItem("tv_aberta_channels");
+        }
       } catch {}
     }
 
@@ -716,12 +729,12 @@
 
     function diagnoseHint(url) {
       if (location.protocol === "https:" && /^http:\/\//i.test(url)) {
-        return "Bloqueio Mixed Content (HTTP dentro de HTTPS).";
+        return "Link HTTP em página HTTPS (Mixed Content).";
       }
       if (/^(rtsp|rtmp):\/\//i.test(url)) {
         return "Protocolo RTSP/RTMP não roda direto no navegador.";
       }
-      return "Verifique bloqueio CORS, link offline ou proteção DRM.";
+      return "Canal pode estar offline, bloqueado por CORS ou com restrição de origem.";
     }
 
     function playNativeDirect(url, title, useCors = false) {
@@ -744,7 +757,7 @@
             fallbackStage = 2;
             playNativeDirect(url, title, false);
           } else {
-            setStatus(`Falha ao abrir "${title}". ${diagnoseHint(url)}`, "err");
+            setStatus(`Não abriu "${title}". ${diagnoseHint(url)}`, "err");
           }
         });
     }
@@ -773,8 +786,8 @@
           lowLatencyMode: true,
           backBufferLength: 60,
           maxBufferLength: 30,
-          fragLoadingMaxRetry: 4,
-          manifestLoadingMaxRetry: 3,
+          fragLoadingMaxRetry: 3,
+          manifestLoadingMaxRetry: 2,
           xhrSetup: function (xhr) {
             xhr.withCredentials = false;
           }
@@ -801,14 +814,14 @@
         hls.on(window.Hls.Events.ERROR, (_e, data) => {
           if (data.fatal) {
             if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              setStatus("Recuperando decodificação de mídia...", "err");
+              setStatus("Recuperando sinal de mídia...", "err");
               hls.recoverMediaError();
             } else if (fallbackStage === 0) {
               fallbackStage = 1;
               setStatus("Tentando reprodução direta...");
               playNativeDirect(url, title, false);
             } else {
-              setStatus(`Canal indisponível ou bloqueado. ${diagnoseHint(url)}`, "err");
+              setStatus(`Não abriu "${title}". ${diagnoseHint(url)}`, "err");
               destroyHls();
             }
           }
@@ -900,8 +913,9 @@
       return parsed;
     }
 
-    function loadChannels(list, autoPlayFirst = true) {
+    function loadChannels(list, autoPlayFirst = false) {
       channels = list;
+      visibleLimit = PAGE_SIZE;
       currentChannelIndex = -1;
       updateCategories();
       renderChannelList();
@@ -923,11 +937,11 @@
       });
     }
 
-    function renderChannelList() {
+    function getFilteredChannels() {
       const term = searchInput.value.trim().toLowerCase();
       const selectedCat = categorySelect.value;
 
-      const filtered = channels
+      return channels
         .map((ch, idx) => ({ ...ch, originalIndex: idx }))
         .filter((ch) => {
           if (activeTab === "FAV" && !favorites.has(ch.url)) return false;
@@ -937,14 +951,20 @@
           }
           return true;
         });
+    }
 
+    function renderChannelList() {
+      const filtered = getFilteredChannels();
       channelListEl.innerHTML = "";
+
       if (filtered.length === 0) {
         channelListEl.innerHTML = `<div class="empty-list">Nenhum canal encontrado.</div>`;
         return;
       }
 
-      filtered.forEach((ch) => {
+      const slice = filtered.slice(0, visibleLimit);
+
+      slice.forEach((ch) => {
         const item = document.createElement("div");
         item.className = "channel-item" + (ch.originalIndex === currentChannelIndex ? " active" : "");
 
@@ -954,6 +974,7 @@
           const img = document.createElement("img");
           img.src = ch.logo;
           img.className = "ch-logo";
+          img.loading = "lazy";
           img.onerror = () => {
             img.remove();
             logoWrap.textContent = ch.name.slice(0, 2).toUpperCase();
@@ -984,13 +1005,24 @@
         item.onclick = () => selectChannelByIndex(ch.originalIndex);
         channelListEl.appendChild(item);
       });
+
+      if (filtered.length > visibleLimit) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "load-more-btn";
+        moreBtn.textContent = `Mostrar mais (${filtered.length - visibleLimit} restantes)`;
+        moreBtn.onclick = () => {
+          visibleLimit += PAGE_SIZE;
+          renderChannelList();
+        };
+        channelListEl.appendChild(moreBtn);
+      }
     }
 
     function selectChannelByIndex(index) {
       if (index < 0 || index >= channels.length) return;
       currentChannelIndex = index;
       const ch = channels[index];
-      urlInput.value = ch.url;
       renderChannelList();
       playMedia(ch.url, ch.name);
     }
@@ -998,21 +1030,27 @@
     async function handleOpenUrl(rawUrl) {
       const url = rawUrl.trim();
       if (!url) return;
+
       if (/\.m3u($|\?)/i.test(url)) {
-        setStatus("Carregando lista...");
+        setStatus("Baixando e lendo lista de canais...");
+        showOsd("Carregando lista de canais...");
         try {
           const resp = await fetch(url);
-          if (!resp.ok) throw new Error();
-          const list = parseM3UContent(await resp.text());
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const text = await resp.text();
+          const list = parseM3UContent(text);
           if (list.length > 0) {
-            loadChannels(list, true);
-            setStatus(`Lista carregada (${list.length} canais).`, "ok");
+            loadChannels(list, false);
+            setStatus(`Lista carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
+            showOsd(`Lista com ${list.length} canais — Selecione um canal`);
             return;
           }
         } catch {
-          setStatus("Abrindo link diretamente...");
+          setStatus("Não foi possível baixar a lista automaticamente. Tente baixar o .m3u e abrir por Arquivo.", "err");
+          return;
         }
       }
+
       playMedia(url, url);
     }
 
@@ -1024,8 +1062,8 @@
           const text = String(reader.result || "");
           const list = parseM3UContent(text);
           if (list.length > 0) {
-            loadChannels(list, true);
-            setStatus(`Lista "${file.name}" carregada (${list.length} canais).`, "ok");
+            loadChannels(list, false);
+            setStatus(`Lista "${file.name}" carregada (${list.length} canais). Clique em um canal.`, "ok");
           } else {
             const firstUrl = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
             firstUrl ? playMedia(firstUrl, file.name) : setStatus("Nenhum link válido no arquivo.", "err");
@@ -1184,13 +1222,14 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
     };
 
     video.ondblclick = () => btnFullscreen.click();
-    searchInput.oninput = renderChannelList;
-    categorySelect.onchange = renderChannelList;
+    searchInput.oninput = () => { visibleLimit = PAGE_SIZE; renderChannelList(); };
+    categorySelect.onchange = () => { visibleLimit = PAGE_SIZE; renderChannelList(); };
 
     tabAll.onclick = () => {
       activeTab = "ALL";
       tabAll.classList.add("active");
       tabFav.classList.remove("active");
+      visibleLimit = PAGE_SIZE;
       renderChannelList();
     };
 
@@ -1198,6 +1237,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       activeTab = "FAV";
       tabFav.classList.add("active");
       tabAll.classList.remove("active");
+      visibleLimit = PAGE_SIZE;
       renderChannelList();
     };
 
@@ -1243,17 +1283,15 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
 
     (function restoreSavedSession() {
       try {
-        const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_channels") || "[]");
-        const lastUrl = localStorage.getItem("tv_aberta_last_url") || "";
+        const lastUrl = localStorage.getItem("tv_aberta_last_url");
         if (lastUrl) urlInput.value = lastUrl;
+        const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_channels") || "[]");
         if (Array.isArray(savedChannels) && savedChannels.length > 0) {
           channels = savedChannels;
           updateCategories();
           renderChannelList();
           channelCounter.textContent = `${channels.length} canal(is)`;
-          const idx = channels.findIndex((c) => c.url === lastUrl);
-          if (idx >= 0) { currentChannelIndex = idx; renderChannelList(); }
-          setStatus(`Sessão restaurada (${channels.length} canais).`, "ok");
+          setStatus(`Sessão restaurada (${channels.length} canais). Clique em um canal para assistir.`, "ok");
         }
       } catch {}
     })();
