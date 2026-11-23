@@ -60,9 +60,20 @@
       white-space: nowrap;
     }
 
+    .preset-select {
+      background: var(--card);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
     .url-bar {
       display: flex;
-      flex: 1 1 320px;
+      flex: 1 1 260px;
       gap: 8px;
     }
 
@@ -427,25 +438,31 @@
       TV Aberta Brasil
     </div>
 
+    <select id="presetSelect" class="preset-select" title="Escolher pacote de canais públicos">
+      <option value="COMBO" selected>📺 Pacote Completo (Brasil + Português)</option>
+      <option value="https://iptv-org.github.io/iptv/countries/br.m3u">🇧🇷 Apenas Brasil</option>
+      <option value="https://iptv-org.github.io/iptv/languages/por.m3u">🗣️ Em Português (Geral)</option>
+      <option value="https://iptv-org.github.io/iptv/categories/news.m3u">📰 Notícias (Mundial)</option>
+      <option value="https://iptv-org.github.io/iptv/categories/sports.m3u">⚽ Esportes (Mundial)</option>
+      <option value="https://iptv-org.github.io/iptv/categories/movies.m3u">🎬 Filmes Públicos (Mundial)</option>
+      <option value="ALL_COMBO">🌐 Todas as Listas Combinadas</option>
+    </select>
+
     <form class="url-bar" id="openUrlForm">
       <input
         type="text"
         id="urlInput"
         value="https://iptv-org.github.io/iptv/countries/br.m3u"
-        placeholder="Cole o link do canal (.m3u8, .mp4) ou lista (.m3u)..."
+        placeholder="Ou cole outro link (.m3u8, .m3u)..."
         required
       />
-      <button type="submit" class="primary">Carregar / Assistir</button>
+      <button type="submit" class="primary">Carregar</button>
     </form>
 
     <label class="btn-file" title="Carregar lista .m3u, .m3u8 ou vídeo local">
-      📂 Abrir Lista / Arquivo
+      📂 Arquivo
       <input type="file" id="fileInput" accept=".m3u,.m3u8,.mp4,.webm,.mkv,.ogg,.mp3,video/*,audio/*" />
     </label>
-
-    <button type="button" id="btnSample" title="Carregar canais de demonstração">
-      📡 Canais Demo
-    </button>
 
     <button type="button" id="btnInstall" class="install-btn" style="display:none;" title="Instalar TV Aberta">
       📲 Instalar App
@@ -456,7 +473,7 @@
     <section class="player-section">
       <div class="video-wrapper" id="videoWrapper">
         <video id="video" playsinline></video>
-        <div class="osd-badge" id="osdBadge">Carregando lista do Brasil...</div>
+        <div class="osd-badge" id="osdBadge">Carregando pacote completo de canais abertos...</div>
         <div class="stats-panel" id="statsPanel"></div>
         <div class="drop-overlay">Solte a lista .M3U, .M3U8 ou vídeo aqui</div>
       </div>
@@ -507,7 +524,7 @@
         </div>
 
         <div class="status-bar">
-          <span id="statusText">Iniciando carregamento automático...</span>
+          <span id="statusText">Iniciando carregamento automático das listas...</span>
           <span id="channelCounter">0 canais</span>
         </div>
       </div>
@@ -515,12 +532,12 @@
 
     <aside class="sidebar">
       <div class="sidebar-header">
-        <input type="text" id="searchInput" placeholder="Buscar canal do Brasil..." />
+        <input type="text" id="searchInput" placeholder="Buscar canal na lista..." />
         <div class="filter-row">
           <select id="categorySelect">
             <option value="ALL">Todas as categorias</option>
           </select>
-          <button type="button" id="btnExportList" title="Exportar lista (.m3u)">💾</button>
+          <button type="button" id="btnExportList" title="Exportar lista combinada (.m3u)">💾</button>
           <button type="button" id="btnClearList" title="Limpar lista">🗑️</button>
         </div>
         <div class="tab-btns">
@@ -531,7 +548,7 @@
 
       <div class="channel-list" id="channelList">
         <div class="empty-list">
-          Baixando lista de canais...
+          Baixando listas de canais públicos...
         </div>
       </div>
     </aside>
@@ -539,6 +556,14 @@
 
   <script>
     const PAGE_SIZE = 120;
+
+    const PRESET_URLS = {
+      BR: "https://iptv-org.github.io/iptv/countries/br.m3u",
+      POR: "https://iptv-org.github.io/iptv/languages/por.m3u",
+      NEWS: "https://iptv-org.github.io/iptv/categories/news.m3u",
+      SPORTS: "https://iptv-org.github.io/iptv/categories/sports.m3u",
+      MOVIES: "https://iptv-org.github.io/iptv/categories/movies.m3u"
+    };
 
     function generateTvIconDataUrl(size) {
       const c = document.createElement("canvas");
@@ -599,7 +624,7 @@
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "tv-aberta-br-v3";
+          const CACHE_NAME = "tv-aberta-br-v4";
           self.addEventListener("install", (e) => {
             e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(["./"]).catch(() => {})));
             self.skipWaiting();
@@ -644,10 +669,10 @@
     const videoWrapper = document.getElementById("videoWrapper");
     const osdBadge = document.getElementById("osdBadge");
     const statsPanel = document.getElementById("statsPanel");
+    const presetSelect = document.getElementById("presetSelect");
     const openUrlForm = document.getElementById("openUrlForm");
     const urlInput = document.getElementById("urlInput");
     const fileInput = document.getElementById("fileInput");
-    const btnSample = document.getElementById("btnSample");
     const seekBar = document.getElementById("seekBar");
     const currentTimeEl = document.getElementById("currentTime");
     const durationTimeEl = document.getElementById("durationTime");
@@ -705,8 +730,8 @@
 
     function persistSession() {
       try {
-        localStorage.setItem("tv_aberta_br_last_url", urlInput.value.trim());
-        if (channels.length <= 2000) {
+        localStorage.setItem("tv_aberta_br_last_preset", presetSelect.value);
+        if (channels.length <= 2500) {
           localStorage.setItem("tv_aberta_br_channels", JSON.stringify(channels));
         } else {
           localStorage.removeItem("tv_aberta_br_channels");
@@ -895,7 +920,7 @@
       subSelect.style.display = "inline-block";
     }
 
-    function parseM3UContent(content) {
+    function parseM3UContent(content, tagPrefix = "") {
       const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       const parsed = [];
       let meta = null;
@@ -906,16 +931,17 @@
           const header = commaIdx !== -1 ? line.slice(0, commaIdx) : line;
           const logoMatch = header.match(/tvg-logo="([^"]*)"/i);
           const groupMatch = header.match(/group-title="([^"]*)"/i);
+          const rawGroup = groupMatch && groupMatch[1] ? groupMatch[1] : "Geral";
           meta = {
             name: name || "Canal sem nome",
             logo: logoMatch ? logoMatch[1] : "",
-            group: groupMatch && groupMatch[1] ? groupMatch[1] : "Geral"
+            group: tagPrefix ? `${tagPrefix} • ${rawGroup}` : rawGroup
           };
         } else if (!line.startsWith("#")) {
           parsed.push({
             name: meta?.name || `Canal ${parsed.length + 1}`,
             logo: meta?.logo || "",
-            group: meta?.group || "Geral",
+            group: meta?.group || (tagPrefix || "Geral"),
             url: line
           });
           meta = null;
@@ -925,7 +951,14 @@
     }
 
     function loadChannels(list, autoPlayFirst = false) {
-      channels = list;
+      // Remove URLs duplicadas mantendo a primeira ocorrência
+      const seen = new Set();
+      channels = list.filter((ch) => {
+        if (seen.has(ch.url)) return false;
+        seen.add(ch.url);
+        return true;
+      });
+
       visibleLimit = PAGE_SIZE;
       currentChannelIndex = -1;
       updateCategories();
@@ -1038,32 +1071,78 @@
       playMedia(ch.url, ch.name);
     }
 
+    async function fetchAndParseList(url, prefix = "") {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      return parseM3UContent(text, prefix);
+    }
+
+    async function loadMultipleLists(sources, label) {
+      setStatus(`Baixando ${label}...`);
+      showOsd(`Carregando ${label}...`);
+      try {
+        const results = await Promise.allSettled(
+          sources.map((src) => fetchAndParseList(src.url, src.prefix))
+        );
+        let combined = [];
+        results.forEach((res) => {
+          if (res.status === "fulfilled") {
+            combined = combined.concat(res.value);
+          }
+        });
+        if (combined.length > 0) {
+          loadChannels(combined, false);
+          setStatus(`${label} carregado (${channels.length} canais únicos). Clique em um canal para assistir.`, "ok");
+          showOsd(`Pronto (${channels.length} canais) — Selecione um canal`);
+        } else {
+          setStatus("Não foi possível carregar as listas no momento.", "err");
+        }
+      } catch {
+        setStatus("Erro de conexão ao baixar as listas.", "err");
+      }
+    }
+
     async function handleOpenUrl(rawUrl) {
       const url = rawUrl.trim();
       if (!url) return;
 
       if (/\.m3u($|\?)/i.test(url)) {
-        setStatus("Baixando e lendo lista de canais do Brasil...");
-        showOsd("Carregando canais do Brasil...");
-        try {
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const text = await resp.text();
-          const list = parseM3UContent(text);
-          if (list.length > 0) {
-            loadChannels(list, false);
-            setStatus(`Lista carregada (${list.length} canais). Clique em um canal para assistir.`, "ok");
-            showOsd(`Lista com ${list.length} canais — Selecione um canal`);
-            return;
-          }
-        } catch {
-          setStatus("Erro ao baixar a lista. Verifique sua internet ou carregue o arquivo .m3u local.", "err");
-          return;
-        }
+        await loadMultipleLists([{ url, prefix: "" }], "lista selecionada");
+        return;
       }
 
       playMedia(url, url);
     }
+
+    presetSelect.addEventListener("change", () => {
+      const val = presetSelect.value;
+      if (val === "COMBO") {
+        urlInput.value = PRESET_URLS.BR;
+        loadMultipleLists(
+          [
+            { url: PRESET_URLS.BR, prefix: "Brasil" },
+            { url: PRESET_URLS.POR, prefix: "Português" }
+          ],
+          "Pacote Brasil + Português"
+        );
+      } else if (val === "ALL_COMBO") {
+        urlInput.value = PRESET_URLS.BR;
+        loadMultipleLists(
+          [
+            { url: PRESET_URLS.BR, prefix: "Brasil" },
+            { url: PRESET_URLS.POR, prefix: "Português" },
+            { url: PRESET_URLS.NEWS, prefix: "Notícias" },
+            { url: PRESET_URLS.SPORTS, prefix: "Esportes" },
+            { url: PRESET_URLS.MOVIES, prefix: "Filmes" }
+          ],
+          "Todas as Listas Públicas"
+        );
+      } else {
+        urlInput.value = val;
+        handleOpenUrl(val);
+      }
+    });
 
     function handleLocalFile(file) {
       if (!file) return;
@@ -1099,20 +1178,6 @@
       e.preventDefault();
       videoWrapper.classList.remove("dragover");
       if (e.dataTransfer?.files?.[0]) handleLocalFile(e.dataTransfer.files[0]);
-    });
-
-    btnSample.addEventListener("click", () => {
-      const sampleM3U = `
-#EXTM3U
-#EXTINF:-1 group-title="Demo",Canal Demo HLS
-https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
-#EXTINF:-1 group-title="Demo",Canal Demo Multi-Áudio
-https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
-#EXTINF:-1 group-title="Demo",Canal Demo MP4
-https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4
-      `.trim();
-      loadChannels(parseM3UContent(sampleM3U), true);
-      setStatus("Canais demo carregados.", "ok");
     });
 
     function formatTime(sec) {
@@ -1261,7 +1326,7 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
       });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "audio/x-mpegurl" }));
-      a.download = "lista-tv-aberta-brasil.m3u";
+      a.download = "lista-tv-aberta-completa.m3u";
       a.click();
       setStatus("Lista exportada!", "ok");
     };
@@ -1294,21 +1359,29 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
 
     (function initPlayer() {
       try {
-        const lastUrl = localStorage.getItem("tv_aberta_br_last_url");
-        if (lastUrl) urlInput.value = lastUrl;
+        const lastPreset = localStorage.getItem("tv_aberta_br_last_preset");
+        if (lastPreset) presetSelect.value = lastPreset;
+
         const savedChannels = JSON.parse(localStorage.getItem("tv_aberta_br_channels") || "[]");
         if (Array.isArray(savedChannels) && savedChannels.length > 0) {
           channels = savedChannels;
           updateCategories();
           renderChannelList();
           channelCounter.textContent = `${channels.length} canal(is)`;
-          setStatus(`Sessão restaurada (${channels.length} canais do Brasil). Clique em um canal para assistir.`, "ok");
-          showOsd(`Lista com ${channels.length} canais — Selecione um canal`);
+          setStatus(`Sessão restaurada (${channels.length} canais prontos). Clique em um canal para assistir.`, "ok");
+          showOsd(`Pronto (${channels.length} canais) — Selecione um canal`);
           return;
         }
       } catch {}
 
-      handleOpenUrl(urlInput.value);
+      // Carrega automaticamente o pacote completo (Brasil + Português) ao abrir
+      loadMultipleLists(
+        [
+          { url: PRESET_URLS.BR, prefix: "Brasil" },
+          { url: PRESET_URLS.POR, prefix: "Português" }
+        ],
+        "Pacote Brasil + Português"
+      );
     })();
   </script>
 </body>
