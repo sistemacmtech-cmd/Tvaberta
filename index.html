@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VLC Web PWA" />
+  <title>VLC Web PWA — Player M3U / HLS / Mídia</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-panel: #131a2a;
+      --bg-card: #1b2438;
+      --bg-hover: #25314d;
+      --border: #2a3756;
+      --accent: #ff7b00;
+      --accent-hover: #e56e00;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+
+    .cone-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-block;
+    }
+
+    .url-bar {
+      display: flex;
+      flex: 1 1 320px;
+      gap: 8px;
+    }
+
+    input[type="text"], select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .url-bar input {
+      flex: 1;
+    }
+
+    button, .btn-file {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    button:hover, .btn-file:hover {
+      background: var(--bg-hover);
+      border-color: #3d4f7a;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    button.install-btn {
+      background: rgba(34, 197, 94, 0.16);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #86efac;
+    }
+
+    input[type="file"] { display: none; }
+
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      min-height: 0;
+    }
+
+    @media (max-width: 920px) {
+      body { height: auto; overflow: auto; }
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { height: 420px; }
+    }
+
+    .player-section {
+      display: flex;
+      flex-direction: column;
+      background: #05070c;
+      min-height: 0;
+      position: relative;
+    }
+
+    .video-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+      min-height: 280px;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: calc(100vh - 165px);
+      object-fit: contain;
+    }
+
+    .drop-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 123, 0, 0.18);
+      border: 3px dashed var(--accent);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .video-wrapper.dragover .drop-overlay {
+      display: flex;
+    }
+
+    .osd-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(11, 15, 25, 0.82);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      pointer-events: none;
+      max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stats-panel {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(11, 15, 25, 0.9);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      display: none;
+      z-index: 15;
+      min-width: 210px;
+    }
+
+    .stats-panel.visible { display: block; }
+
+    .vlc-controls {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .timeline-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .live-pill {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: none;
+    }
+
+    .buttons-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ctrl-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .volume-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .volume-box input[type="range"] {
+      width: 80px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .status-bar {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .status-bar .error { color: var(--danger); }
+    .status-bar .ok { color: var(--success); }
+
+    .sidebar {
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .sidebar-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-row select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tab-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tab-btns button {
+      flex: 1;
+      justify-content: center;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+    }
+
+    .tab-btns button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .channel-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .channel-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--bg-card);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .channel-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .channel-item.active {
+      border-color: var(--accent);
+      background: rgba(255, 123, 0, 0.12);
+    }
+
+    .ch-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #0f172a;
+      object-fit: contain;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .ch-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ch-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ch-group {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fav-btn {
+      background: transparent;
+      border: none;
+      padding: 4px 6px;
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    .fav-btn.is-fav {
+      color: #facc15;
+    }
+
+    .empty-list {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      padding: 24px 12px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <svg class="cone-icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L6 18H18L12 2Z" fill="#FF7B00"/>
+        <path d="M8.5 11H15.5L16.6 14H7.4L8.5 11Z" fill="#FFFFFF"/>
+        <rect x="3" y="18" width="18" height="3" rx="1.5" fill="#FF7B00"/>
+      </svg>
+      VLC Web PWA
+    </div>
+
+    <form class="url-bar" id="openUrlForm">
+      <input
+        type="text"
+        id="urlInput"
+        placeholder="Cole link de stream (.m3u8, .mp4) ou URL de lista (.m3u)..."
+        required
+      />
+      <button type="submit" class="primary">Abrir Mídia</button>
+    </form>
+
+    <label class="btn-file" title="Abrir arquivo .m3u, .m3u8 ou vídeo local">
+      📂 Abrir Arquivo
+      <input type="file" id="fileInput" accept=".m3u,.m3u8,.mp4,.webm,.mkv,.ogg,.mp3,video/*,audio/*" />
+    </label>
+
+    <button type="button" id="btnSample" title="Carregar lista pública de exemplo para testar">
+      📺 Lista Exemplo
+    </button>
+
+    <button type="button" id="btnInstall" class="install-btn" style="display:none;" title="Instalar como aplicativo PWA">
+      📲 Instalar App
+    </button>
+  </header>
+
+  <div class="workspace">
+    <section class="player-section">
+      <div class="video-wrapper" id="videoWrapper">
+        <video id="video" playsinline></video>
+        <div class="osd-badge" id="osdBadge">Pronto — Cole um link ou carregue uma lista M3U</div>
+        <div class="stats-panel" id="statsPanel"></div>
+        <div class="drop-overlay">Solte o arquivo .M3U, .M3U8 ou vídeo aqui</div>
+      </div>
+
+      <div class="vlc-controls">
+        <div class="timeline-row">
+          <span id="currentTime">00:00</span>
+          <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1" />
+          <span id="durationTime">00:00</span>
+          <span class="live-pill" id="liveBadge">AO VIVO</span>
+        </div>
+
+        <div class="buttons-row">
+          <div class="ctrl-group">
+            <button type="button" id="btnPlayPause" class="primary" title="Play / Pause (Espaço)">▶ Play</button>
+            <button type="button" id="btnStop" title="Parar (S)">⏹</button>
+            <button type="button" id="btnPrev" title="Canal Anterior (P)">⏮</button>
+            <button type="button" id="btnNext" title="Próximo Canal (N)">⏭</button>
+
+            <div class="volume-box">
+              <button type="button" id="btnMute" title="Mudo (M)">🔊</button>
+              <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" />
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <select id="qualitySelect" title="Qualidade / Resolução HLS">
+              <option value="-1">Qualidade: Auto</option>
+            </select>
+
+            <select id="audioSelect" title="Faixa de Áudio" style="display:none;"></select>
+            <select id="subSelect" title="Legendas" style="display:none;"></select>
+
+            <select id="speedSelect" title="Velocidade de Reprodução">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2.0x</option>
+            </select>
+
+            <button type="button" id="btnSnapshot" title="Capturar Foto da Tela">📸</button>
+            <button type="button" id="btnStats" title="Informações de Codec e Stream">ℹ️</button>
+            <button type="button" id="btnPip" title="Picture-in-Picture">🗗</button>
+            <button type="button" id="btnFullscreen" title="Tela Cheia (F)">⛶</button>
+          </div>
+        </div>
+
+        <div class="status-bar">
+          <span id="statusText">PWA pronto. Atalhos: Espaço (Play), F (Tela cheia), M (Mudo), Setas (Navegar/Volume).</span>
+          <span id="channelCounter">0 canais</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <input type="text" id="searchInput" placeholder="Buscar canal por nome..." />
+        <div class="filter-row">
+          <select id="categorySelect">
+            <option value="ALL">Todas as categorias</option>
+          </select>
+          <button type="button" id="btnClearList" title="Limpar lista atual">🗑️</button>
+        </div>
+        <div class="tab-btns">
+          <button type="button" id="tabAll" class="active">Todos</button>
+          <button type="button" id="tabFav">⭐ Favoritos (<span id="favCount">0</span>)</button>
+        </div>
+      </div>
+
+      <div class="channel-list" id="channelList">
+        <div class="empty-list">
+          Nenhum canal carregado ainda.<br /><br />
+          Cole um link <strong>.m3u8</strong> ou <strong>.m3u</strong> acima, clique em <strong>Abrir Arquivo</strong> ou teste com <strong>Lista Exemplo</strong>.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // --- CONFIGURAÇÃO PWA (Manifesto + Service Worker em arquivo único) ---
+    function generateIconDataUrl(size) {
+      const c = document.createElement("canvas");
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext("2d");
+
+      ctx.fillStyle = "#0b0f19";
+      ctx.fillRect(0, 0, size, size);
+
+      const s = size / 24;
+      ctx.fillStyle = "#ff7b00";
+      ctx.beginPath();
+      ctx.moveTo(12 * s, 2 * s);
+      ctx.lineTo(6 * s, 18 * s);
+      ctx.lineTo(18 * s, 18 * s);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(8.5 * s, 11 * s);
+      ctx.lineTo(15.5 * s, 11 * s);
+      ctx.lineTo(16.6 * s, 14 * s);
+      ctx.lineTo(7.4 * s, 14 * s);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#ff7b00";
+      ctx.fillRect(3 * s, 18 * s, 18 * s, 3 * s);
+
+      return c.toDataURL("image/png");
+    }
+
+    function setupPwaManifestAndSw() {
+      const icon192 = generateIconDataUrl(192);
+      const icon512 = generateIconDataUrl(512);
+
+      const appleLink = document.createElement("link");
+      appleLink.rel = "apple-touch-icon";
+      appleLink.href = icon192;
+      document.head.appendChild(appleLink);
+
+      const manifestObj = {
+        name: "VLC Web PWA — Player M3U & HLS",
+        short_name: "VLC PWA",
+        start_url: "./",
+        display: "standalone",
+        orientation: "any",
+        background_color: "#0b0f19",
+        theme_color: "#0b0f19",
+        icons: [
+          { src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: "application/manifest+json" });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = manifestUrl;
+      document.head.appendChild(manifestLink);
+
+      if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+        const swCode = `
+          const CACHE_NAME = "vlc-web-pwa-v1";
+          self.addEventListener("install", (event) => {
+            event.waitUntil(
+              caches.open(CACHE_NAME).then((cache) => cache.addAll(["./"]).catch(() => {}))
+            );
+            self.skipWaiting();
+          });
+          self.addEventListener("activate", (event) => {
+            event.waitUntil(
+              caches.keys().then((keys) =>
+                Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+              )
+            );
+            self.clients.claim();
+          });
+          self.addEventListener("fetch", (event) => {
+            if (event.request.method !== "GET") return;
+            const url = event.request.url;
+            // Não intercepta streams de vídeo/segmentos TS/M3U8 para manter reprodução ao vivo fluida
+            if (/\\.(m3u8|ts|m4s|mp4|webm)($|\\?)/i.test(url)) return;
+            event.respondWith(
+              fetch(event.request).catch(() => caches.match(event.request))
+            );
+          });
+        `;
+        const swBlob = new Blob([swCode], { type: "application/javascript" });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+    }
+
+    let deferredInstallPrompt = null;
+    const btnInstall = document.getElementById("btnInstall");
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      btnInstall.style.display = "inline-flex";
+    });
+
+    btnInstall.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === "accepted") {
+        setStatus("Aplicativo instalado na tela inicial!", "ok");
+      }
+      deferredInstallPrompt = null;
+      btnInstall.style.display = "none";
+    });
+
+    window.addEventListener("appinstalled", () => {
+      btnInstall.style.display = "none";
+      setStatus("VLC Web PWA instalado com sucesso.", "ok");
+    });
+
+    setupPwaManifestAndSw();
+
+    // --- PLAYER E LISTA DE CANAIS ---
+    const video = document.getElementById("video");
+    const videoWrapper = document.getElementById("videoWrapper");
+    const osdBadge = document.getElementById("osdBadge");
+    const statsPanel = document.getElementById("statsPanel");
+    const openUrlForm = document.getElementById("openUrlForm");
+    const urlInput = document.getElementById("urlInput");
+    const fileInput = document.getElementById("fileInput");
+    const btnSample = document.getElementById("btnSample");
+
+    const seekBar = document.getElementById("seekBar");
+    const currentTimeEl = document.getElementById("currentTime");
+    const durationTimeEl = document.getElementById("durationTime");
+    const liveBadge = document.getElementById("liveBadge");
+
+    const btnPlayPause = document.getElementById("btnPlayPause");
+    const btnStop = document.getElementById("btnStop");
+    const btnPrev = document.getElementById("btnPrev");
+    const btnNext = document.getElementById("btnNext");
+    const btnMute = document.getElementById("btnMute");
+    const volumeSlider = document.getElementById("volumeSlider");
+
+    const qualitySelect = document.getElementById("qualitySelect");
+    const audioSelect = document.getElementById("audioSelect");
+    const subSelect = document.getElementById("subSelect");
+    const speedSelect = document.getElementById("speedSelect");
+    const btnSnapshot = document.getElementById("btnSnapshot");
+    const btnStats = document.getElementById("btnStats");
+    const btnPip = document.getElementById("btnPip");
+    const btnFullscreen = document.getElementById("btnFullscreen");
+
+    const statusText = document.getElementById("statusText");
+    const channelCounter = document.getElementById("channelCounter");
+
+    const searchInput = document.getElementById("searchInput");
+    const categorySelect = document.getElementById("categorySelect");
+    const btnClearList = document.getElementById("btnClearList");
+    const tabAll = document.getElementById("tabAll");
+    const tabFav = document.getElementById("tabFav");
+    const favCountEl = document.getElementById("favCount");
+    const channelListEl = document.getElementById("channelList");
+
+    let hls = null;
+    let channels = [];
+    let currentChannelIndex = -1;
+    let activeTab = "ALL";
+    let favorites = new Set(JSON.parse(localStorage.getItem("vlc_pwa_favs") || "[]"));
+    let statsInterval = null;
+
+    function setStatus(msg, type = "") {
+      statusText.textContent = msg;
+      statusText.className = type;
+    }
+
+    function showOsd(text) {
+      osdBadge.textContent = text;
+    }
+
+    function saveFavorites() {
+      localStorage.setItem("vlc_pwa_favs", JSON.stringify([...favorites]));
+      favCountEl.textContent = favorites.size;
+    }
+
+    function persistSession() {
+      try {
+        localStorage.setItem("vlc_pwa_channels", JSON.stringify(channels.slice(0, 500)));
+        localStorage.setItem("vlc_pwa_last_url", urlInput.value.trim());
+      } catch {}
+    }
+
+    saveFavorites();
+
+    function destroyHls() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+      qualitySelect.innerHTML = '<option value="-1">Qualidade: Auto</option>';
+      audioSelect.style.display = "none";
+      audioSelect.innerHTML = "";
+      subSelect.style.display = "none";
+      subSelect.innerHTML = "";
+    }
+
+    function playMedia(url, title = "Stream") {
+      if (!url) return;
+      destroyHls();
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+
+      showOsd(`Carregando: ${title}`);
+      setStatus(`Conectando em ${title}...`);
+      persistSession();
+
+      const isHls = /\.m3u8($|\?)/i.test(url) || url.includes("m3u8");
+
+      if (isHls && window.Hls && window.Hls.isSupported()) {
+        hls = new window.Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 60
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(video);
+
+        hls.on(window.Hls.Events.MANIFEST_PARSED, (_e, data) => {
+          populateQualities(data.levels || []);
+          showOsd(`Reproduzindo: ${title}`);
+          setStatus(`Reproduzindo: ${title}`, "ok");
+          video.play().catch(() => {
+            setStatus("Clique em Play para iniciar a reprodução.");
+          });
+        });
+
+        hls.on(window.Hls.Events.AUDIO_TRACKS_UPDATED, (_e, data) => {
+          populateAudioTracks(data.audioTracks || []);
+        });
+
+        hls.on(window.Hls.Events.SUBTITLE_TRACKS_UPDATED, (_e, data) => {
+          populateSubtitles(data.subtitleTracks || []);
+        });
+
+        hls.on(window.Hls.Events.ERROR, (_e, data) => {
+          if (data.fatal) {
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+              setStatus("Erro de rede ou bloqueio CORS/HTTPS no servidor do stream. Tentando reconectar...", "error");
+              hls.startLoad();
+            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              setStatus("Erro de decodificação de mídia. Recuperando...", "error");
+              hls.recoverMediaError();
+            } else {
+              setStatus(`Falha ao abrir stream (${data.details}).`, "error");
+              destroyHls();
+            }
+          }
+        });
+      } else {
+        video.src = url;
+        video.play()
+          .then(() => {
+            showOsd(`Reproduzindo: ${title}`);
+            setStatus(`Reproduzindo: ${title}`, "ok");
+          })
+          .catch(() => {
+            setStatus("Não foi possível reproduzir diretamente (verifique formato ou CORS).", "error");
+          });
+      }
+    }
+
+    function populateQualities(levels) {
+      qualitySelect.innerHTML = '<option value="-1">Qualidade: Auto</option>';
+      levels.forEach((lvl, index) => {
+        const opt = document.createElement("option");
+        opt.value = index;
+        const height = lvl.height ? `${lvl.height}p` : `Nível ${index + 1}`;
+        const kbps = lvl.bitrate ? ` (${Math.round(lvl.bitrate / 1000)} kbps)` : "";
+        opt.textContent = `${height}${kbps}`;
+        qualitySelect.appendChild(opt);
+      });
+    }
+
+    function populateAudioTracks(tracks) {
+      if (!tracks || tracks.length <= 1) {
+        audioSelect.style.display = "none";
+        return;
+      }
+      audioSelect.innerHTML = "";
+      tracks.forEach((t, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = `Áudio: ${t.name || t.lang || `Faixa ${idx + 1}`}`;
+        audioSelect.appendChild(opt);
+      });
+      audioSelect.style.display = "inline-block";
+    }
+
+    function populateSubtitles(tracks) {
+      if (!tracks || tracks.length === 0) {
+        subSelect.style.display = "none";
+        return;
+      }
+      subSelect.innerHTML = '<option value="-1">Legenda: Off</option>';
+      tracks.forEach((t, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = `Legenda: ${t.name || t.lang || `CC ${idx + 1}`}`;
+        subSelect.appendChild(opt);
+      });
+      subSelect.style.display = "inline-block";
+    }
+
+    function parseM3UContent(content) {
+      const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const parsed = [];
+      let meta = null;
+
+      for (const line of lines) {
+        if (line.startsWith("#EXTINF:")) {
+          const commaIdx = line.indexOf(",");
+          const name = commaIdx !== -1 ? line.slice(commaIdx + 1).trim() : "Canal sem nome";
+          const header = commaIdx !== -1 ? line.slice(0, commaIdx) : line;
+
+          const logoMatch = header.match(/tvg-logo="([^"]*)"/i);
+          const groupMatch = header.match(/group-title="([^"]*)"/i);
+
+          meta = {
+            name: name || "Canal sem nome",
+            logo: logoMatch ? logoMatch[1] : "",
+            group: groupMatch && groupMatch[1] ? groupMatch[1] : "Geral"
+          };
+        } else if (!line.startsWith("#")) {
+          parsed.push({
+            name: meta?.name || `Canal ${parsed.length + 1}`,
+            logo: meta?.logo || "",
+            group: meta?.group || "Geral",
+            url: line
+          });
+          meta = null;
+        }
+      }
+      return parsed;
+    }
+
+    function loadChannels(list, autoPlayFirst = true) {
+      channels = list;
+      currentChannelIndex = -1;
+      updateCategories();
+      renderChannelList();
+      channelCounter.textContent = `${channels.length} canal(is)`;
+      persistSession();
+
+      if (autoPlayFirst && channels.length > 0) {
+        selectChannelByIndex(0);
+      }
+    }
+
+    function updateCategories() {
+      const groups = [...new Set(channels.map((c) => c.group))].sort();
+      categorySelect.innerHTML = '<option value="ALL">Todas as categorias</option>';
+      groups.forEach((g) => {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        categorySelect.appendChild(opt);
+      });
+    }
+
+    function renderChannelList() {
+      const term = searchInput.value.trim().toLowerCase();
+      const selectedCat = categorySelect.value;
+
+      const filtered = channels
+        .map((ch, idx) => ({ ...ch, originalIndex: idx }))
+        .filter((ch) => {
+          if (activeTab === "FAV" && !favorites.has(ch.url)) return false;
+          if (selectedCat !== "ALL" && ch.group !== selectedCat) return false;
+          if (term && !ch.name.toLowerCase().includes(term) && !ch.group.toLowerCase().includes(term)) {
+            return false;
+          }
+          return true;
+        });
+
+      channelListEl.innerHTML = "";
+
+      if (filtered.length === 0) {
+        channelListEl.innerHTML = `<div class="empty-list">Nenhum canal encontrado com os filtros atuais.</div>`;
+        return;
+      }
+
+      filtered.forEach((ch) => {
+        const item = document.createElement("div");
+        item.className = "channel-item" + (ch.originalIndex === currentChannelIndex ? " active" : "");
+
+        const logoWrap = document.createElement("div");
+        logoWrap.className = "ch-logo";
+        if (ch.logo) {
+          const img = document.createElement("img");
+          img.src = ch.logo;
+          img.className = "ch-logo";
+          img.onerror = () => {
+            img.remove();
+            logoWrap.textContent = ch.name.slice(0, 2).toUpperCase();
+          };
+          logoWrap.appendChild(img);
+        } else {
+          logoWrap.textContent = ch.name.slice(0, 2).toUpperCase();
+        }
+
+        const info = document.createElement("div");
+        info.className = "ch-info";
+        info.innerHTML = `
+          <div class="ch-name" title="${ch.name}">${ch.name}</div>
+          <div class="ch-group">${ch.group}</div>
+        `;
+
+        const favBtn = document.createElement("button");
+        favBtn.type = "button";
+        favBtn.className = "fav-btn" + (favorites.has(ch.url) ? " is-fav" : "");
+        favBtn.textContent = favorites.has(ch.url) ? "★" : "☆";
+        favBtn.title = "Favoritar canal";
+        favBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (favorites.has(ch.url)) {
+            favorites.delete(ch.url);
+          } else {
+            favorites.add(ch.url);
+          }
+          saveFavorites();
+          renderChannelList();
+        });
+
+        item.appendChild(logoWrap);
+        item.appendChild(info);
+        item.appendChild(favBtn);
+
+        item.addEventListener("click", () => {
+          selectChannelByIndex(ch.originalIndex);
+        });
+
+        channelListEl.appendChild(item);
+      });
+    }
+
+    function selectChannelByIndex(index) {
+      if (index < 0 || index >= channels.length) return;
+      currentChannelIndex = index;
+      const ch = channels[index];
+      urlInput.value = ch.url;
+      renderChannelList();
+      playMedia(ch.url, ch.name);
+    }
+
+    async function handleOpenUrl(rawUrl) {
+      const url = rawUrl.trim();
+      if (!url) return;
+
+      if (/\.m3u($|\?)/i.test(url)) {
+        setStatus("Baixando lista M3U remota...");
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const text = await resp.text();
+          const list = parseM3UContent(text);
+          if (list.length > 0) {
+            loadChannels(list, true);
+            setStatus(`Lista carregada com ${list.length} canais.`, "ok");
+            return;
+          }
+        } catch {
+          setStatus("Não foi possível baixar a lista M3U (bloqueio CORS). Tentando abrir como stream...", "error");
+        }
+      }
+
+      playMedia(url, url);
+    }
+
+    function handleLocalFile(file) {
+      if (!file) return;
+      const isPlaylist = /\.(m3u|m3u8|txt)$/i.test(file.name);
+
+      if (isPlaylist) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = String(reader.result || "");
+          const list = parseM3UContent(text);
+          if (list.length > 0) {
+            loadChannels(list, true);
+            setStatus(`Arquivo "${file.name}" carregado (${list.length} canais).`, "ok");
+          } else {
+            const firstUrl = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
+            if (firstUrl) {
+              playMedia(firstUrl, file.name);
+            } else {
+              setStatus("Nenhum link válido encontrado no arquivo.", "error");
+            }
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        const blobUrl = URL.createObjectURL(file);
+        playMedia(blobUrl, file.name);
+      }
+    }
+
+    openUrlForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      handleOpenUrl(urlInput.value);
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      handleLocalFile(e.target.files?.[0]);
+    });
+
+    videoWrapper.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      videoWrapper.classList.add("dragover");
+    });
+
+    videoWrapper.addEventListener("dragleave", () => {
+      videoWrapper.classList.remove("dragover");
+    });
+
+    videoWrapper.addEventListener("drop", (e) => {
+      e.preventDefault();
+      videoWrapper.classList.remove("dragover");
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleLocalFile(file);
+    });
+
+    btnSample.addEventListener("click", () => {
+      const sampleM3U = `
+#EXTM3U
+#EXTINF:-1 group-title="Testes HLS" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/220px-Big_buck_bunny_poster_big.jpg",Big Buck Bunny (HLS 1080p)
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 group-title="Testes HLS",Tears of Steel (HLS Multi-Áudio)
+https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
+#EXTINF:-1 group-title="Testes HLS",Sintel (HLS)
+https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8
+#EXTINF:-1 group-title="Vídeos Diretos",For Bigger Blazes (MP4)
+https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4
+      `.trim();
+
+      const list = parseM3UContent(sampleM3U);
+      loadChannels(list, true);
+      setStatus("Lista de exemplo carregada para testes.", "ok");
+    });
+
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) return "00:00";
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      return h > 0
+        ? `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+        : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    btnPlayPause.addEventListener("click", () => {
+      if (video.paused) video.play();
+      else video.pause();
+    });
+
+    video.addEventListener("play", () => {
+      btnPlayPause.textContent = "⏸ Pause";
+    });
+
+    video.addEventListener("pause", () => {
+      btnPlayPause.textContent = "▶ Play";
+    });
+
+    btnStop.addEventListener("click", () => {
+      destroyHls();
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      btnPlayPause.textContent = "▶ Play";
+      seekBar.value = 0;
+      currentTimeEl.textContent = "00:00";
+      durationTimeEl.textContent = "00:00";
+      liveBadge.style.display = "none";
+      showOsd("Parado");
+      setStatus("Reprodução interrompida.");
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (channels.length > 0) {
+        const prev = (currentChannelIndex - 1 + channels.length) % channels.length;
+        selectChannelByIndex(prev);
+      }
+    });
+
+    btnNext.addEventListener("click", () => {
+      if (channels.length > 0) {
+        const next = (currentChannelIndex + 1) % channels.length;
+        selectChannelByIndex(next);
+      }
+    });
+
+    btnMute.addEventListener("click", () => {
+      video.muted = !video.muted;
+      btnMute.textContent = video.muted || video.volume === 0 ? "🔇" : "🔊";
+    });
+
+    volumeSlider.addEventListener("input", () => {
+      video.volume = parseFloat(volumeSlider.value);
+      video.muted = video.volume === 0;
+      btnMute.textContent = video.muted ? "🔇" : "🔊";
+    });
+
+    video.addEventListener("timeupdate", () => {
+      if (!isFinite(video.duration) || video.duration === 0) {
+        liveBadge.style.display = "inline-block";
+        durationTimeEl.textContent = "LIVE";
+        currentTimeEl.textContent = formatTime(video.currentTime);
+        seekBar.value = 100;
+      } else {
+        liveBadge.style.display = "none";
+        durationTimeEl.textContent = formatTime(video.duration);
+        currentTimeEl.textContent = formatTime(video.currentTime);
+        seekBar.value = (video.currentTime / video.duration) * 100;
+      }
+    });
+
+    seekBar.addEventListener("input", () => {
+      if (isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = (parseFloat(seekBar.value) / 100) * video.duration;
+      }
+    });
+
+    qualitySelect.addEventListener("change", () => {
+      if (hls) hls.currentLevel = parseInt(qualitySelect.value, 10);
+    });
+
+    audioSelect.addEventListener("change", () => {
+      if (hls) hls.audioTrack = parseInt(audioSelect.value, 10);
+    });
+
+    subSelect.addEventListener("change", () => {
+      if (hls) hls.subtitleTrack = parseInt(subSelect.value, 10);
+    });
+
+    speedSelect.addEventListener("change", () => {
+      video.playbackRate = parseFloat(speedSelect.value);
+    });
+
+    btnSnapshot.addEventListener("click", () => {
+      if (!video.videoWidth) {
+        setStatus("Nenhum vídeo ativo para capturar imagem.", "error");
+        return;
+      }
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const link = document.createElement("a");
+        link.download = `snapshot-${Date.now()}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        setStatus("Snapshot salvo!", "ok");
+      } catch {
+        setStatus("Não foi possível capturar screenshot (stream protegido por CORS).", "error");
+      }
+    });
+
+    btnStats.addEventListener("click", () => {
+      statsPanel.classList.toggle("visible");
+      if (statsPanel.classList.contains("visible")) {
+        updateStats();
+        statsInterval = setInterval(updateStats, 1000);
+      } else {
+        clearInterval(statsInterval);
+      }
+    });
+
+    function updateStats() {
+      const res = video.videoWidth ? `${video.videoWidth}x${video.videoHeight}` : "N/A";
+      const buffered = video.buffered.length
+        ? `${(video.buffered.end(video.buffered.length - 1) - video.currentTime).toFixed(1)}s`
+        : "0s";
+      let hlsInfo = "Nativo / Direto";
+      if (hls && hls.levels && hls.currentLevel >= 0 && hls.levels[hls.currentLevel]) {
+        const lvl = hls.levels[hls.currentLevel];
+        hlsInfo = `HLS • ${Math.round((lvl.bitrate || 0) / 1000)} kbps • ${lvl.videoCodec || ""}`;
+      }
+      statsPanel.innerHTML = `
+        <strong>Informações de Mídia</strong><br>
+        Resolução: ${res}<br>
+        Buffer: ${buffered}<br>
+        Velocidade: ${video.playbackRate}x<br>
+        Motor: ${hlsInfo}
+      `;
+    }
+
+    btnPip.addEventListener("click", async () => {
+      try {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
+      } catch {
+        setStatus("Picture-in-Picture não disponível para este vídeo.", "error");
+      }
+    });
+
+    btnFullscreen.addEventListener("click", () => {
+      if (!document.fullscreenElement) videoWrapper.requestFullscreen().catch(() => {});
+      else document.exitFullscreen().catch(() => {});
+    });
+
+    video.addEventListener("dblclick", () => btnFullscreen.click());
+
+    searchInput.addEventListener("input", renderChannelList);
+    categorySelect.addEventListener("change", renderChannelList);
+
+    tabAll.addEventListener("click", () => {
+      activeTab = "ALL";
+      tabAll.classList.add("active");
+      tabFav.classList.remove("active");
+      renderChannelList();
+    });
+
+    tabFav.addEventListener("click", () => {
+      activeTab = "FAV";
+      tabFav.classList.add("active");
+      tabAll.classList.remove("active");
+      renderChannelList();
+    });
+
+    btnClearList.addEventListener("click", () => {
+      channels = [];
+      currentChannelIndex = -1;
+      localStorage.removeItem("vlc_pwa_channels");
+      updateCategories();
+      renderChannelList();
+      channelCounter.textContent = "0 canais";
+      setStatus("Lista de canais limpa.");
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+
+      switch (e.key.toLowerCase()) {
+        case " ":
+          e.preventDefault();
+          btnPlayPause.click();
+          break;
+        case "f":
+          btnFullscreen.click();
+          break;
+        case "m":
+          btnMute.click();
+          break;
+        case "s":
+          btnStop.click();
+          break;
+        case "n":
+          btnNext.click();
+          break;
+        case "p":
+          btnPrev.click();
+          break;
+        case "arrowright":
+          if (isFinite(video.duration)) video.currentTime = Math.min(video.duration, video.currentTime + 10);
+          break;
+        case "arrowleft":
+          if (isFinite(video.duration)) video.currentTime = Math.max(0, video.currentTime - 10);
+          break;
+        case "arrowup":
+          e.preventDefault();
+          video.volume = Math.min(1, video.volume + 0.1);
+          volumeSlider.value = video.volume;
+          break;
+        case "arrowdown":
+          e.preventDefault();
+          video.volume = Math.max(0, video.volume - 0.1);
+          volumeSlider.value = video.volume;
+          break;
+      }
+    });
+
+    // Restaura última lista salva ao abrir o PWA
+    (function restoreSavedSession() {
+      try {
+        const savedChannels = JSON.parse(localStorage.getItem("vlc_pwa_channels") || "[]");
+        const lastUrl = localStorage.getItem("vlc_pwa_last_url") || "";
+        if (lastUrl) urlInput.value = lastUrl;
+        if (Array.isArray(savedChannels) && savedChannels.length > 0) {
+          channels = savedChannels;
+          updateCategories();
+          renderChannelList();
+          channelCounter.textContent = `${channels.length} canal(is)`;
+          const idx = channels.findIndex((c) => c.url === lastUrl);
+          if (idx >= 0) {
+            currentChannelIndex = idx;
+            renderChannelList();
+          }
+          setStatus(`Sessão restaurada (${channels.length} canais salvos). Clique em um canal para tocar.`, "ok");
+        }
+      } catch {}
+    })();
+  </script>
+</body>
+</html>
