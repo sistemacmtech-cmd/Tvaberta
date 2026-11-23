@@ -599,7 +599,7 @@
 
       if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
         const swCode = `
-          const CACHE_NAME = "tv-aberta-br-v2";
+          const CACHE_NAME = "tv-aberta-br-v3";
           self.addEventListener("install", (e) => {
             e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(["./"]).catch(() => {})));
             self.skipWaiting();
@@ -685,6 +685,7 @@
     let favorites = new Set(JSON.parse(localStorage.getItem("tv_aberta_br_favs") || "[]"));
     let statsInterval = null;
     let fallbackStage = 0;
+    let networkRetryCount = 0;
     let currentActiveUrl = "";
     let currentActiveTitle = "";
 
@@ -729,12 +730,12 @@
 
     function diagnoseHint(url) {
       if (location.protocol === "https:" && /^http:\/\//i.test(url)) {
-        return "Link HTTP em página HTTPS (Mixed Content).";
+        return "Link HTTP bloqueado em página HTTPS (Mixed Content).";
       }
       if (/^(rtsp|rtmp):\/\//i.test(url)) {
         return "Protocolo RTSP/RTMP não roda direto no navegador.";
       }
-      return "Canal pode estar offline, bloqueado por CORS ou com restrição de origem.";
+      return "Transmissão temporariamente fora do ar ou restrita pelo servidor de origem (CORS).";
     }
 
     function playNativeDirect(url, title, useCors = false) {
@@ -757,7 +758,7 @@
             fallbackStage = 2;
             playNativeDirect(url, title, false);
           } else {
-            setStatus(`Não abriu "${title}". ${diagnoseHint(url)}`, "err");
+            setStatus(`Falha ao abrir "${title}". ${diagnoseHint(url)}`, "err");
           }
         });
     }
@@ -767,6 +768,7 @@
       currentActiveUrl = url;
       currentActiveTitle = title;
       fallbackStage = 0;
+      networkRetryCount = 0;
 
       destroyHls();
       video.pause();
@@ -783,11 +785,16 @@
       if (!isDirectFile && window.Hls && window.Hls.isSupported()) {
         hls = new window.Hls({
           enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 60,
-          maxBufferLength: 30,
-          fragLoadingMaxRetry: 3,
-          manifestLoadingMaxRetry: 2,
+          lowLatencyMode: false,
+          backBufferLength: 90,
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
+          maxBufferHole: 0.5,
+          fragLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 1000,
+          manifestLoadingMaxRetry: 4,
+          levelLoadingMaxRetry: 4,
+          startLevel: -1,
           xhrSetup: function (xhr) {
             xhr.withCredentials = false;
           }
@@ -813,15 +820,19 @@
 
         hls.on(window.Hls.Events.ERROR, (_e, data) => {
           if (data.fatal) {
-            if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              setStatus("Recuperando sinal de mídia...", "err");
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR && networkRetryCount < 3) {
+              networkRetryCount++;
+              setStatus(`Reconectando sinal (${networkRetryCount}/3)...`);
+              hls.startLoad();
+            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              setStatus("Ajustando fluxo de mídia...", "err");
               hls.recoverMediaError();
             } else if (fallbackStage === 0) {
               fallbackStage = 1;
-              setStatus("Tentando reprodução direta...");
+              setStatus("Tentando modo de reprodução nativo...");
               playNativeDirect(url, title, false);
             } else {
-              setStatus(`Não abriu "${title}". ${diagnoseHint(url)}`, "err");
+              setStatus(`Sinal indisponível para "${title}". ${diagnoseHint(url)}`, "err");
               destroyHls();
             }
           }
@@ -1046,7 +1057,7 @@
             return;
           }
         } catch {
-          setStatus("Erro ao baixar a lista. Verifique sua conexão ou tente usar o arquivo .m3u local.", "err");
+          setStatus("Erro ao baixar a lista. Verifique sua internet ou carregue o arquivo .m3u local.", "err");
           return;
         }
       }
@@ -1297,7 +1308,6 @@ https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlaze
         }
       } catch {}
 
-      // Carrega automaticamente a URL definida no campo ao abrir a página
       handleOpenUrl(urlInput.value);
     })();
   </script>
